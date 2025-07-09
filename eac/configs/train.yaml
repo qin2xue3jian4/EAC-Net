@@ -1,0 +1,47 @@
+mode: train
+nepoch: 3000
+seed: 20
+
+defaults:
+  - hydra: default
+  - defaults/data@_here_
+  - model: space
+  - defaults/lr@_here_
+  - defaults/record@_here_
+  - defaults/loss@_here_
+  - _self_
+
+model:
+  spin: false
+  lmax: 3
+  feature_length: 12
+  num_atom_layers: 3
+  num_probe_layers: 2
+  num_basis: 8
+  atom_invariant_neurons:
+  - 64
+  probe_invariant_neurons:
+  - 64
+  simple_neurons:
+  - 240
+  - 10
+  edge_weight_neurons:
+  - 240
+  charge_neurons:
+  - 240
+
+data:
+  atom_rcut: 4.0
+  probe_rcut: 6.0
+  train:
+    paths: null
+    frame_size: 1
+    probe_size: 5
+    num_workers: 0
+    epoch_size: 10
+  valid:
+    paths: null
+    frame_size: 1
+    probe_size: 5
+    num_workers: 0
+    epoch_size: 5

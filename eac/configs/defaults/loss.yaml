@@ -1,0 +1,20 @@
+loss:
+  probe_loss_func: mae
+  probe_item_func: ratio
+  spin_type: sumdiff
+  charge_weight_start: 1.0
+  charge_weight_end: 1.0
+  charge_diff_weight_start: 100.0
+  charge_diff_weight_end: 1.0
+
+  potential_loss_func: mse
+  potential_item_func: rmse
+  energy_weight_start: 1.0
+  energy_weight_end: 1.0
+  force_weight_start: 1.0
+  force_weight_end: 1.0
+  virial_weight_start: 1.0
+  virial_weight_end: 1.0
+
+  multy_weight_method: null
+  space_negative_loss: false

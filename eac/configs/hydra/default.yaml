@@ -1,0 +1,11 @@
+verbose: false
+job:
+  name: ${mode}-${now:%Y-%m-%d_%H-%M-%S}  # 这会使用 mode 的默认值或命令行覆盖值
+run:
+  dir: ./outputs/${hydra.job.name}
+job_logging:
+  formatters:
+    simple:
+      format: '[%(asctime)s][%(levelname)s] - %(message)s'
+      datefmt: '%Y-%m-%d %H:%M:%S'
+output_subdir: null

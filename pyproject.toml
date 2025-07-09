@@ -1,0 +1,58 @@
+[project]
+name = "eac"
+version = "0.1.0"
+description = "An open-source code for predicting atomic contributions charge density using Equivariant Message Passing Networks."
+authors = [
+    {name = "QinXuejian",email = "qinxuejian@nimte.ac.cn"},
+    {name = "LvTaoyuze",email = "temp@nimte.ac.cn"},
+]
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.10,<3.13"
+homepage = "https://github.com/qin2xue3jian4/RealGridE3Net"
+
+[project.scripts]
+eac = "eac.entry:main"
+
+[tool.poetry]
+packages = [
+  { include = "eac" },
+]
+include = [
+    { path = "eac/configs", format = "sdist" },
+    { path = "eac/configs", format = "wheel" }
+]
+
+[tool.poetry.dependencies]
+hydra-core = ">=1.3.2,<2.0.0"
+torch = { version = "2.5.1", source = "pytorch121" }
+numpy = "==1.26.4"
+e3nn = "==0.5.5"
+dpdata = "==0.2.23"
+ase = "==3.24.0"
+torch-geometric = "==2.6.1"
+pymatgen = "==2025.1.9"
+torch_cluster = { version = "1.6.3", source = "pyg" }
+torch_scatter = { version = "2.1.2", source = "pyg" }
+
+[tool.poetry.dev-dependencies]
+matplotlib = "==3.8.0"
+
+[[tool.poetry.source]]
+name = "ustc"
+url = "https://pypi.tuna.tsinghua.edu.cn/simple/"
+priority = "primary"
+
+[[tool.poetry.source]]
+name = "pytorch121"
+url = "https://download.pytorch.org/whl/cu121"
+priority = "explicit"
+
+[[tool.poetry.source]]
+name = "pyg"
+url = "https://pytorch-geometric.com/whl/torch-2.5.1+cu121.html"
+priority = "explicit"
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"

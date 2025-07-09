@@ -1,0 +1,5 @@
+data:
+  root_dir: null
+  atom_sel: 40
+  probe_sel: 100
+  lazy_load: false

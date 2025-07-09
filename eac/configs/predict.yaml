@@ -1,0 +1,7 @@
+defaults:
+  - hydra: default
+  - defaults/data@_here_
+  - _self_
+
+mode: predict
+seed: 20
