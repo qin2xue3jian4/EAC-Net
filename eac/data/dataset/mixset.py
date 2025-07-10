@@ -58,7 +58,6 @@ class MixDataset(Dataset):
                         self.nprobes.append(group.nprobe)
                 else:
                     self.length += group.nframe
-        self.base_seed = 0
     
     def get_igroup_iframe_idots(
         self,
@@ -88,7 +87,11 @@ class MixDataset(Dataset):
     
     def __getitem__(self, idx):
         igroup = 0
-        origin_idx = idx
+        if isinstance(idx, tuple):
+            idx, base_seed = idx
+        else:
+            base_seed = 0
+        seed = idx + base_seed
         while True:
             nframe = self.nframes[igroup]
             ndot = np.prod(self.predict_ngfs) if self.mode == 'predict' else self.nprobes[igroup]
@@ -101,7 +104,6 @@ class MixDataset(Dataset):
                 iframe = idx // nbatch
                 ibatch = idx % nbatch
                 if self.mode == 'train': # shuffle probe for training
-                    seed = origin_idx + self.base_seed
                     rng = np.random.default_rng(seed=seed)
                     idots = rng.choice(ndot, size=self.probe_size, replace=False)
                 else:

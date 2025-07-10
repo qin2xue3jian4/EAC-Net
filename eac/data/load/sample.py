@@ -18,7 +18,6 @@ class EACSampler:
         self.init_env()
     
     def init_env(self):
-        self.dataset.base_seed = self.ndata * self.niter
         rng = np.random.default_rng(seed=self.niter)
         if self.ndata > MAX_SIZE:
             full_perm = rng.choice(self.ndata, size=int(MAX_SIZE), replace=False).tolist()
@@ -27,6 +26,7 @@ class EACSampler:
         self.permutation = full_perm[self.rank::self.world_size]
         self.iter_length = len(self.permutation)
         self.index = 0
+        self.base_seed = self.ndata * self.niter
     
     def __iter__(self):
         return self
@@ -37,4 +37,4 @@ class EACSampler:
             self.init_env()
         idx = self.permutation[self.index]
         self.index += 1
-        return idx
+        return idx, self.base_seed
