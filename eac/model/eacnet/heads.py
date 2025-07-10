@@ -86,6 +86,9 @@ class ChargeHead(torch.nn.Module):
         neuron: List[int],
         active: torch.nn.Module = torch.nn.SiLU(),
         spin: bool = False,
+        bias: bool = True,
+        idt: bool = True,
+        resnet: bool = True,
     ):
         super().__init__()
         self.neuron = [edge_feature_length,] + neuron + [(2 if spin else 1),]
@@ -93,9 +96,9 @@ class ChargeHead(torch.nn.Module):
         self.charge_net = FullyConnected(
             self.neuron,
             active,
-            bias=True,
-            idt=True,
-            resnet=True,
+            bias=bias,
+            idt=idt,
+            resnet=resnet,
             netname='charge_net',
         )
         self.scalar2charge = Scalar2Charge()
@@ -119,7 +122,7 @@ class ChargeHead(torch.nn.Module):
         )
         if self.spin:
             data[keys.PROBE][keys.CHARGE] = torch.sum(probe_charges, dim=-1)
-            data[keys.PROBE][keys.CHARGE_DIFF] = torch.diff(probe_charges, dim=-1)[:,0]
+            data[keys.PROBE][keys.CHARGE_DIFF] = probe_charges[:,0] - probe_charges[:,1]
         else:
             data[keys.PROBE][keys.CHARGE] = probe_charges[:,0]
         return
