@@ -41,8 +41,7 @@ class MixDataset(Dataset):
         self.group_keys: List[str] = []
         self.groups: List[Union[SpaceGroup, BaseGroup]] = []
         self.nframes: List[int] = []
-        self.nprobes: List[int] = []
-        self.length = 0
+        self.batch_probes: List[int] = []
         for file_path, reader in self.readers.items():
             for group_key, group in zip(reader.group_keys, reader.groups):
                 final = f'{file_path}:{group_key}'
@@ -50,15 +49,16 @@ class MixDataset(Dataset):
                 self.groups.append(group)
                 self.nframes.append(group.nframe)
                 if self.out_type != 'potential':
-                    if self.mode == 'predict':
-                        self.length += group.nframe * math.ceil(np.prod(self.predict_ngfs) / self.probe_size)
-                        self.nprobes.append(np.prod(self.predict_ngfs))
-                    else:
-                        self.length += group.nframe * math.ceil(group.nprobe / self.probe_size)
-                        self.nprobes.append(group.nprobe)
+                    nprobe = np.prod(self.predict_ngfs) if self.mode == 'predict' else group.nprobe
+                    n_batch_probes = math.ceil(nprobe / self.probe_size)
                 else:
-                    self.length += group.nframe
-    
+                    n_batch_probes = 1
+                self.batch_probes.append(n_batch_probes)
+        # flatten
+        self.group_sizes = [f * p for f, p in zip(self.nframes, self.batch_probes)]
+        self.cum_sizes = np.concatenate([[0], np.cumsum(self.group_sizes)])
+        self.length = int(self.cum_sizes[-1])
+        
     def get_igroup_iframe_idots(
         self,
         igroup: int,
@@ -80,39 +80,28 @@ class MixDataset(Dataset):
             probe_sel=self.probe_sel,
             dtype=self.dtype,
         )
+        herodata[keys.INFOS] = self.groups[igroup].extro_infos
+        herodata[keys.FRAME_ID] = f'{self.group_keys[igroup]}:{iframe}'
         return herodata
     
     def __len__(self):
         return self.length
     
     def __getitem__(self, idx):
-        igroup = 0
         if isinstance(idx, tuple):
             idx, base_seed = idx
         else:
             base_seed = 0
-        seed = idx + base_seed
-        while True:
-            nframe = self.nframes[igroup]
-            ndot = np.prod(self.predict_ngfs) if self.mode == 'predict' else self.nprobes[igroup]
-            nbatch = math.ceil(ndot / self.probe_size)
-            if idx >= nframe * nbatch:
-                idx -= nframe * nbatch
-                igroup += 1
-                assert igroup < len(self.groups), 'Index out of range.'
-            else:
-                iframe = idx // nbatch
-                ibatch = idx % nbatch
-                if self.mode == 'train': # shuffle probe for training
-                    rng = np.random.default_rng(seed=seed)
-                    idots = rng.choice(ndot, size=self.probe_size, replace=False)
-                else:
-                    idots = np.arange(ibatch * self.probe_size, min(ndot, (ibatch + 1) * self.probe_size))
-                break
+        igroup = int(np.searchsorted(self.cum_sizes, idx, side='right') - 1)
+        offset = idx - self.cum_sizes[igroup]
+        group_batch_nprobes = self.batch_probes[igroup]
+        iframe = offset // group_batch_nprobes
+        ibatch = offset % group_batch_nprobes
+        if self.mode == 'train': # shuffle probe for training
+            rng = np.random.default_rng(seed=idx + base_seed)
+            idots = rng.choice(group_batch_nprobes, size=self.probe_size, replace=False)
+        else:
+            idots = np.arange(ibatch * self.probe_size, min(group_batch_nprobes, (ibatch + 1) * self.probe_size))
         if self.lazy_load and self.mode == 'train':
             idots = np.sort(idots)
-        out_data = self.get_igroup_iframe_idots(igroup, iframe, idots)
-        out_data[keys.INFOS] = self.groups[igroup].extro_infos
-        out_data[keys.FRAME_ID] = f'{self.group_keys[igroup]}:{iframe}'
-        return out_data
-
+        return self.get_igroup_iframe_idots(igroup, iframe, idots)
