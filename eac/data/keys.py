@@ -13,6 +13,7 @@ FRAME_ID = 'frame_id'
 INFOS = 'infos'
 NUM_NODES = 'num_nodes'
 SMOOTH = 'smooth'
+WEIGHT_SMOOTH = 'weight_smooth'
 
 # edge
 INDEX = 'edge_index'

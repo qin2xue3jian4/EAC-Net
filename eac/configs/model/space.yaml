@@ -65,7 +65,7 @@ probe:
     neuron: ${model.simple_neurons}
     cat_keys: []
   probe_edge_weight:
-    # smooth:
+    smooth: null
     #   p: 3
     #   rcut: ${data.probe_rcut}
     #   epsilon: ${model.probe.edge_encoding.basis.epsilon}

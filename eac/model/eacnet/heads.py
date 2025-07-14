@@ -14,16 +14,20 @@ class ProbeEdgeWeightNet(torch.nn.Module):
         self,
         method: str,
         edge_feature_length: int,
+        smooth: Dict = None,
         active: torch.nn.Module = torch.nn.SiLU(),
         probe_cut: float = 6.0,
         neurons: List[int] = [240, 240],
         threshold: float = 1E-8
     ):
         super().__init__()
+        self.smooth = smooth
         self.method = method
         self.probe_cut = probe_cut
         self.cat_length = edge_feature_length
         self.threshold = threshold
+        if self.smooth is not None:
+            self.smooth_net = PolynomialSmooth(**self.smooth)
         if self.method in ['exp+smooth', 'exp*smooth', 'softmax-smooth']:
             self.weight_neurons = [self.cat_length*2,] + neurons + [1,]
             self.edge_weight_net = FullyConnected(
@@ -38,8 +42,14 @@ class ProbeEdgeWeightNet(torch.nn.Module):
         if self.method == 'one':
             edge[keys.WEIGHT] = 1.0
             return data
-        elif self.method == 'smooth':
-            edge[keys.WEIGHT] = edge[keys.SMOOTH]
+        
+        if self.smooth is None:
+            edge[keys.WEIGHT_SMOOTH] = edge[keys.SMOOTH]
+        else:
+            edge[keys.WEIGHT_SMOOTH] = self.smooth_net(edge[keys.LENGTH]) + self.threshold
+        
+        if self.method == 'smooth':
+            edge[keys.WEIGHT] = edge[keys.WEIGHT_SMOOTH]
             return data
         
         nprobe = data[keys.PROBE][keys.NUM_NODES]
@@ -47,7 +57,7 @@ class ProbeEdgeWeightNet(torch.nn.Module):
         
         simpled_edge_features = edge[keys.FEATURES]
         probe_features = scatter(
-            simpled_edge_features*edge[keys.SMOOTH],
+            simpled_edge_features*edge[keys.WEIGHT_SMOOTH],
             node_probe,
             0,
             dim_size=nprobe
@@ -59,16 +69,16 @@ class ProbeEdgeWeightNet(torch.nn.Module):
         # feature for final weight
         edge_weight = self.edge_weight_net(cat_edge_features)
         if self.method == 'exp+smooth':
-            edge_weight = edge_weight + edge[keys.SMOOTH]
+            edge_weight = edge_weight + edge[keys.WEIGHT_SMOOTH]
         edge_weight = edge_weight - edge_weight.max()
         # # softmax
         if self.method == 'exp*smooth':
-            exp_edge_weight = torch.exp(edge_weight) * edge[keys.SMOOTH] + self.threshold
+            exp_edge_weight = torch.exp(edge_weight) * edge[keys.WEIGHT_SMOOTH] + self.threshold
         else:
             exp_edge_weight = torch.exp(edge_weight) + self.threshold
         sum_exp_edge_weight = scatter(exp_edge_weight , node_probe, 0, dim_size=nprobe)
         if self.method == 'softmax-smooth':
-            edge[keys.WEIGHT] = exp_edge_weight / sum_exp_edge_weight[node_probe] * edge[keys.SMOOTH]
+            edge[keys.WEIGHT] = exp_edge_weight / sum_exp_edge_weight[node_probe] * edge[keys.WEIGHT_SMOOTH]
         else:
             edge[keys.WEIGHT] = exp_edge_weight / sum_exp_edge_weight[node_probe]
         return data
@@ -122,7 +132,7 @@ class ChargeHead(torch.nn.Module):
         )
         if self.spin:
             data[keys.PROBE][keys.CHARGE] = torch.sum(probe_charges, dim=-1)
-            data[keys.PROBE][keys.CHARGE_DIFF] = probe_charges[:,0] - probe_charges[:,1]
+            data[keys.PROBE][keys.CHARGE_DIFF] = torch.diff(probe_charges, dim=-1)[:,0] #probe_charges[:,0] - probe_charges[:,1]
         else:
             data[keys.PROBE][keys.CHARGE] = probe_charges[:,0]
         return
