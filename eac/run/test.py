@@ -108,15 +108,15 @@ class Tester(Controller):
                 iframe += 1
                 self._log(f'Testing frame {iframe}: {last_frame_id}')
             
-            preds = self.model(data, out_type=self.out_type, return_atom_features=True)
-            if not keep_same_frame:
-                atom_representations = preds[keys.ATOM_FEATURES]
-            
-            probe_empty = data[keys.PROBE][keys.CHARGE].numel() == 0
+            probe_empty = data[keys.PROBE][keys.POS].numel() == 0
             # empty probe
             if probe_empty:
                 for key in space_keys:
                     preds[key] = torch.zeros((nprobe,), dtype=self.dtype, device=self.device)
+            else:
+                preds = self.model(data, out_type=self.out_type, return_atom_features=True)
+                if not keep_same_frame:
+                    atom_representations = preds[keys.ATOM_FEATURES]
             
             labels = graph_to_labels(data, preds.keys())
             for key in labels:

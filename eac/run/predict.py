@@ -52,17 +52,17 @@ class Predictor(Controller):
             # atom contributions
             if atom_contributions is None and self.args.contribute:
                 atom_contributions = torch.zeros((natom*np.prod(self.ngfs), self.spin), dtype=self.dtype)
-            
-            preds = self.model(data, out_type=self.out_type, return_atom_features=True)
-            if not keep_same_frame:
-                atom_representations = preds[keys.ATOM_FEATURES]
-            
+
             # empty probe
-            probe_empty = data[keys.PROBE][keys.CHARGE].numel() == 0
+            probe_empty = data[keys.PROBE][keys.POS].numel() == 0
             if probe_empty:
                 preds = {}
                 for key in space_keys:
                     preds[key] = torch.zeros((nprobe,), dtype=self.dtype, device=self.device)
+            else:
+                preds = self.model(data, out_type=self.out_type, return_atom_features=True)
+                if not keep_same_frame:
+                    atom_representations = preds[keys.ATOM_FEATURES]
             
             # record preds and grid position
             for key in preds:
