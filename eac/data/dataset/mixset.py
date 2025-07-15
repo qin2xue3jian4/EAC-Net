@@ -41,6 +41,7 @@ class MixDataset(Dataset):
         self.group_keys: List[str] = []
         self.groups: List[Union[SpaceGroup, BaseGroup]] = []
         self.nframes: List[int] = []
+        self.nprobes: List[int] = []
         self.batch_probes: List[int] = []
         for file_path, reader in self.readers.items():
             for group_key, group in zip(reader.group_keys, reader.groups):
@@ -52,7 +53,8 @@ class MixDataset(Dataset):
                     nprobe = np.prod(self.predict_ngfs) if self.mode == 'predict' else group.nprobe
                     n_batch_probes = math.ceil(nprobe / self.probe_size)
                 else:
-                    n_batch_probes = 1
+                    n_batch_probes = nprobe = 1
+                self.nprobes.append(nprobe)
                 self.batch_probes.append(n_batch_probes)
         # flatten
         self.group_sizes = [f * p for f, p in zip(self.nframes, self.batch_probes)]
@@ -97,11 +99,12 @@ class MixDataset(Dataset):
         group_batch_nprobes = self.batch_probes[igroup]
         iframe = offset // group_batch_nprobes
         ibatch = offset % group_batch_nprobes
+        nprobe = self.nprobes[igroup]
         if self.mode == 'train': # shuffle probe for training
             rng = np.random.default_rng(seed=idx + base_seed)
-            idots = rng.choice(group_batch_nprobes, size=self.probe_size, replace=False)
+            idots = rng.choice(nprobe, size=self.probe_size, replace=False)
         else:
-            idots = np.arange(ibatch * self.probe_size, min(group_batch_nprobes, (ibatch + 1) * self.probe_size))
+            idots = np.arange(ibatch * self.probe_size, min(nprobe, (ibatch + 1) * self.probe_size))
         if self.lazy_load and self.mode == 'train':
             idots = np.sort(idots)
         return self.get_igroup_iframe_idots(igroup, iframe, idots)
