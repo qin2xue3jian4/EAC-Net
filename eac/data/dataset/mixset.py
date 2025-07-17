@@ -101,7 +101,8 @@ class MixDataset(Dataset):
         ibatch = offset % group_batch_nprobes
         nprobe = self.nprobes[igroup]
         if self.mode == 'train': # shuffle probe for training
-            rng = np.random.default_rng(seed=idx + base_seed)
+            ss  = np.random.SeedSequence(base_seed, spawn_key=(igroup, iframe, ibatch))
+            rng = np.random.default_rng(ss)
             idots = rng.choice(nprobe, size=self.probe_size, replace=False)
         else:
             idots = np.arange(ibatch * self.probe_size, min(nprobe, (ibatch + 1) * self.probe_size))
