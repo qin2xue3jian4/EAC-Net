@@ -1,6 +1,7 @@
 mode: train
 nepoch: 3000
 seed: 20
+grad_max_norm: null
 
 defaults:
   - hydra: default

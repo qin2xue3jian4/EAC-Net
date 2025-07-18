@@ -4,6 +4,7 @@ from typing import Dict
 from collections import (
     defaultdict,
 )
+import torch.nn.utils as nn_utils
 
 from .record import Recorder
 from ..data.load import LoaderWrapper
@@ -120,6 +121,8 @@ class Trainer(Controller):
                 if flow_type == 'train':
                     self.optimizer.zero_grad(set_to_none=True)
                     loss.backward()
+                    if self.cfg['grad_max_norm'] is not None:
+                        nn_utils.clip_grad_norm_(self.model.parameters(), self.cfg['grad_max_norm'])
                     self.optimizer.step()
                     self.train_step += 1
                 
