@@ -21,17 +21,15 @@ class LoaderWrapper:
     world_size: int
     def __post_init__(self):
         
-        if self.epoch_size <= 0:
-            self.epoch_size = len(self.dataset)
+        self.sampler = EACSampler(
+            self.dataset,
+            self.shuffle,
+            rank=self.local_rank,
+            world_size=self.world_size,
+        )
         
-        if self.shuffle:
-            self.sampler = EACSampler(
-                self.dataset,
-                rank=self.local_rank,
-                world_size=self.world_size,
-            )
-        else:
-            self.sampler = None
+        if self.epoch_size <= 0:
+            self.epoch_size = len(self.sampler.permutation)
         
         self.loader = DataLoader(
             self.dataset,
