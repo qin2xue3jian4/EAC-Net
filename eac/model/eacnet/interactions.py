@@ -219,6 +219,9 @@ class ProbeInteractionLayer(BaseInteractionLayer):
             node_atom = edge[keys.INDEX][0]
             last_grid_features = data[keys.ATOM][keys.FEATURES][node_atom]
         
+        if self.last_update:
+            last_grid_features = self.last_feature_linear(last_grid_features)
+        
         # edge tensor product
         edge_weight = self.edge_weight(edge[keys.BASIS_WEIGHT])
         grid_edge_features = self.node_edge_tp(
