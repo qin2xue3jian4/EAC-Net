@@ -136,9 +136,9 @@ class Controller(Runner):
             self.restored_cfg = OmegaConf.create(state_dict['settings'])
             if hasattr(self.cfg, 'model'):
                 restored_model = state_dict['settings']['model']
-                cfg_model = OmegaConf.to_container(self.cfg)['model']
+                cfg_model = OmegaConf.to_container(self.cfg, resolve=True)['model']
                 if restored_model != cfg_model:
-                    self._log(f'model setting is different between input and restored model, using setting from restored model.', 1, loglevel='warn')
+                    self._log(f'model setting is different between input and restored model, using setting from input script.', 1, loglevel='warn')
             self.cfg = OmegaConf.merge(self.restored_cfg, self.cfg)
         else:
             state_dict = {}
@@ -148,14 +148,14 @@ class Controller(Runner):
         self.module = model = get_model(self.cfg)
         model = model.to(device=self.device, dtype=self.dtype)
         if restored:
-            model.load_state_dict(state_dict['model_state'], strict=False)
-        if hasattr(self.args, 'finetune') and self.args.finetune:
-            model.solid_atom_envnet()
-        
+            finetune = hasattr(self.args, 'finetune') and self.args.finetune
+            msgs = model.safely_load_state_dict(state_dict['model_state'], finetune)
+            for msg in msgs:
+                self._log(msg, 1, loglevel='warn')
         if hasattr(model, 'atom_env_irreps'):
             self._log(f'atom local environment irreps: {model.atom_env_irreps}', 1)
         num_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
-        self._log(f'num of params is {num_params}', 1)
+        self._log(f'num of training params is {num_params}', 1)
         class_str = type(model)
         self._log(f'class of model is {class_str}', 1)
         

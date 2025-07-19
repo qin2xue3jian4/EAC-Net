@@ -22,8 +22,9 @@ class Trainer(Controller):
             self.args,
             self.cfg
         )
+        trainable_params = [p for p in self.module.parameters() if p.requires_grad]
         self.optimizer = torch.optim.Adam(
-            self.module.parameters(),
+            trainable_params,
             lr=self.cfg.lr.start_lr,
         )
         self.scheduler = Schedulers(

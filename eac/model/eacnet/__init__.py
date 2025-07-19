@@ -42,11 +42,6 @@ class EACMixModel(BaseModel):
                 **potential,
                 atom_env_irreps=self.atom_env_irreps
             )
-
-    def solid_atom_envnet(self, solid=True):
-        for params in self.atom_env_model.parameters():
-            params.requires_grad = not solid
-        return
     
     def forward(
         self,
