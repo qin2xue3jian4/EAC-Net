@@ -216,6 +216,7 @@ class Controller(Runner):
             world_size=self.world_size,
             search_depth=self.args.search_depth,
             lazy_load=self.cfg.data.lazy_load,
+            base_seed=self.cfg.seed,
         )
         return loader
     

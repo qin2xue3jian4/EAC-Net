@@ -31,7 +31,6 @@ class EACSampler:
             self.permutation = np.arange(self.rank, self.ndata, self.world_size)
         self.iter_length = len(self.permutation)
         self.index = 0
-        self.base_seed = self.ndata * self.niter
     
     def __iter__(self):
         return self
@@ -42,4 +41,4 @@ class EACSampler:
             self.init_env()
         idx = self.permutation[self.index]
         self.index += 1
-        return idx, self.base_seed
+        return idx, self.niter

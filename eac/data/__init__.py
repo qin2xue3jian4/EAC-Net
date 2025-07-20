@@ -25,6 +25,7 @@ def get_loader(
     world_size: int = 1,
     search_depth: int = 6,
     lazy_load: bool = False,
+    base_seed: int = 0,
 ):
     dataset = MixDataset(
         paths,
@@ -40,6 +41,7 @@ def get_loader(
         predict_ngfs=predict_ngfs,
         search_depth=search_depth,
         lazy_load=lazy_load,
+        base_seed=base_seed,
     )
     
     shuffle = mode == 'train'

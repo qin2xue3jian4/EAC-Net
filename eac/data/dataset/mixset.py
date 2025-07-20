@@ -29,6 +29,7 @@ class MixDataset(Dataset):
     predict_ngfs: np.ndarray
     search_depth: int
     lazy_load: bool
+    base_seed: int = 0
     def __post_init__(self):
         assert self.mode != 'predict' or self.predict_ngfs is not None, 'Predict ngfs must be provided in predict mode.'
         self.readers = file_paths_to_readers(
@@ -91,9 +92,9 @@ class MixDataset(Dataset):
     
     def __getitem__(self, idx):
         if isinstance(idx, tuple):
-            idx, base_seed = idx
+            idx, niter = idx
         else:
-            base_seed = 0
+            niter = 0
         igroup = int(np.searchsorted(self.cum_sizes, idx, side='right') - 1)
         offset = idx - self.cum_sizes[igroup]
         group_batch_nprobes = self.batch_probes[igroup]
@@ -101,7 +102,7 @@ class MixDataset(Dataset):
         ibatch = offset % group_batch_nprobes
         nprobe = self.nprobes[igroup]
         if self.mode == 'train': # shuffle probe for training
-            ss  = np.random.SeedSequence(base_seed, spawn_key=(igroup, iframe, ibatch))
+            ss  = np.random.SeedSequence(self.base_seed, spawn_key=(niter, idx))
             rng = np.random.default_rng(ss)
             idots = rng.choice(nprobe, size=self.probe_size, replace=False)
         else:
