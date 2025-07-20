@@ -111,28 +111,14 @@ class Controller(Runner):
     def _load_model(self):
         self._log('Building model.')
         
-        # find restore location: checkpoint - command model
-        restored = False
-        checkpoint = os.path.join(self.output_dir, 'models', 'checkpoint.pt')
-        if not getattr(self.args, 'restart', False) and os.path.exists(checkpoint):
-            restored = checkpoint
-            method = 'checkpoint'
-        elif self.args.model and os.path.exists(self.args.model):
-            restored = self.args.model
-            method = 'command model'
-        else:
-            if self.args.model:
-                assert not os.path.exists(self.args.model)
-                self._log(f'Model file {self.args.model} is not existing, building new model.', 1)
-            method = 'new'
-        
-        # load
+        # fine command model
+        restored = self.args.model and os.path.exists(self.args.model)
         if restored:
-            self._log(f'Resuming model from {method}: {restored}', 1)
+            self._log(f'Resuming model from command model: {self.args.model}', 1)
             try:
-                state_dict = torch.load(restored, map_location='cpu', weights_only=True)
+                state_dict = torch.load(self.args.model, map_location='cpu', weights_only=True)
             except:
-                state_dict = torch.load(restored, map_location='cpu', weights_only=False)
+                state_dict = torch.load(self.args.model, map_location='cpu', weights_only=False)
             self.restored_cfg = OmegaConf.create(state_dict['settings'])
             if hasattr(self.cfg, 'model'):
                 restored_model = state_dict['settings']['model']
@@ -140,9 +126,11 @@ class Controller(Runner):
                 if restored_model != cfg_model:
                     self._log(f'model setting is different between input and restored model, using setting from input script.', 1, loglevel='warn')
             self.cfg = OmegaConf.merge(self.restored_cfg, self.cfg)
+            method = 'command'
         else:
-            state_dict = {}
-            assert hasattr(self.cfg, 'model')
+            if self.args.model:
+                self._log(f'Model file {self.args.model} is not existing, building new model.', 1)
+            method = 'new'
         
         # build
         self.module = model = get_model(self.cfg)
@@ -152,6 +140,17 @@ class Controller(Runner):
             msgs = model.safely_load_state_dict(state_dict['model_state'], finetune)
             for msg in msgs:
                 self._log(msg, 1, loglevel='warn')
+        
+        # fine checkpoint
+        checkpoint = os.path.join(self.output_dir, 'models', 'checkpoint.pt')
+        if not getattr(self.args, 'restart', False) and os.path.exists(checkpoint):
+            try:
+                state_dict = torch.load(checkpoint, map_location='cpu', weights_only=True)
+            except:
+                state_dict = torch.load(checkpoint, map_location='cpu', weights_only=False)
+            model.load_state_dict(state_dict['model_state'])
+            method = 'checkpoint'
+        
         if hasattr(model, 'atom_env_irreps'):
             self._log(f'atom local environment irreps: {model.atom_env_irreps}', 1)
         num_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
