@@ -3,6 +3,7 @@
 outputs/
 examples/
 debug/
+charge3net/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

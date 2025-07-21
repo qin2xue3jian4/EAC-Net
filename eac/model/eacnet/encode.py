@@ -49,10 +49,14 @@ class AtomEncoding(torch.nn.Module):
     ):
         atom_numbers = data[keys.ATOM]['type']
         
-        atom_attrs = self.physics_encode[atom_numbers]
+        if self.physics_length > 0:
+            atom_attrs = physics_attrs = self.physics_encode[atom_numbers]
+        
         if self.onehot_opening:
-            onehot = self.onehot_net(atom_numbers)
-            atom_attrs = torch.cat([atom_attrs, onehot], dim=-1)
+            atom_attrs = onehot = self.onehot_net(atom_numbers)
+        
+        if self.physics_length > 0 and self.onehot_opening:
+            atom_attrs = torch.cat([physics_attrs, onehot], dim=-1)
         
         data[keys.ATOM][keys.ATTR] = atom_attrs
         

@@ -136,6 +136,9 @@ def get_physics_encode(
     if physics_args.get('atomic_number', False):
         physics_encode.append(torch.arange(1,len(ELEMENTS)+1)[:,None])
     
+    if len(physics_encode) == 0:
+        return torch.empty((len(ELEMENTS),0))
+    
     physics_encode = torch.concatenate(physics_encode, dim=-1)
     
     if start_in_one:

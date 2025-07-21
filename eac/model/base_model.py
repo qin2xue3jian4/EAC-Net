@@ -6,9 +6,6 @@ class ModelFactory(BaseFactory):
     _registry = {}
 
 class BaseModel(torch.nn.Module):
-    def __init__(self, *args, **kwargs):
-        super().__init__()
-
     def safely_load_state_dict(self, state_dict: Dict, finetune: bool = False):
         msgs = []
         for name, params in self.named_parameters():
@@ -22,5 +19,3 @@ class BaseModel(torch.nn.Module):
                 else:
                     msgs.append(f'{name} shape mismatch')
         return msgs
-    def forward(self, data: Dict, *args, **kwargs) -> Dict:
-        pass
