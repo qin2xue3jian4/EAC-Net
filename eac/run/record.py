@@ -72,7 +72,11 @@ class Recorder(Runner):
     
     def create_lcurve_file(self, trainer):
         lcurve = os.path.join(self.output_dir, 'lcurve.out')
-        if os.path.exists(lcurve):
+        if self.local_rank > 0:
+            lcurve += f'.{self.local_rank}'
+        if (old_lcurve := os.path.exists(lcurve)):
+            with open(lcurve, 'r')as f:
+                lines = f.readlines()
             file_backups(lcurve)
         self.lcurve_f = open(lcurve, 'w+', buffering=1)
         simplys = ['',] + [
@@ -92,6 +96,12 @@ class Recorder(Runner):
         second_line = '# If there is no available reference data, rmse_*_{val,trn} will print nan\n'
         self.lcurve_f.write(first_line)
         self.lcurve_f.write(second_line)
+        if old_lcurve and lines[0] == first_line:
+            for line in lines[2:]:
+                this_step = int(line.split()[0])
+                if this_step >= trainer.train_step:
+                    break
+                self.lcurve_f.write(line)
         return None
     
     def print_lcurve(self, trainer):
