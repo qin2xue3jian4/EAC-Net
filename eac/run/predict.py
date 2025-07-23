@@ -12,8 +12,6 @@ from ..data import keys, write
 class Predictor(Controller):
     def __post_init__(self):
         super().__post_init__()
-        self.ngfs = np.array(self.args.ngfs.split('*'), dtype=np.int64)
-        
         frame_size = 1 if self.out_type == 'probe' or self.args.frame_size is None else self.args.frame_size
         probe_size = self.args.probe_size or 50
         epoch_size = -1
@@ -40,6 +38,7 @@ class Predictor(Controller):
         for data in tqdm.tqdm(self.loader):
             natom = data[keys.ATOM][keys.POS].shape[0]
             nprobe = data[keys.PROBE][keys.POS].shape[0]
+            ngfs = data[keys.PROBE_GRID_NGFS].cpu().detach().cpu().numpy()
             
             # atom representation
             keep_same_frame = data[keys.FRAME_ID][0] == last_frame_id
@@ -51,7 +50,7 @@ class Predictor(Controller):
                 self._log(f'Predicting frame {iframe}: {last_frame_id}')
             # atom contributions
             if atom_contributions is None and self.args.contribute:
-                atom_contributions = torch.zeros((natom*np.prod(self.ngfs), self.spin), dtype=self.dtype)
+                atom_contributions = torch.zeros((natom*np.prod(ngfs), self.spin), dtype=self.dtype)
 
             # empty probe
             probe_empty = data[keys.PROBE][keys.POS].numel() == 0
@@ -76,7 +75,7 @@ class Predictor(Controller):
                 edge = data[keys.PROBE_EDGE_KEY]
                 atom_index, probe_index = edge[keys.INDEX]
                 grid_edge_scalar = edge[keys.CHARGE].detach().cpu()
-                linear_indices = (atom_index * np.prod(self.ngfs) + probe_index + grid_ptr).cpu()
+                linear_indices = (atom_index * np.prod(ngfs) + probe_index + grid_ptr).cpu()
                 expanded_indices = linear_indices.unsqueeze(-1).expand(-1, self.spin)
                 flat_charge = torch.zeros_like(atom_contributions)
                 flat_charge.scatter_add_(0, expanded_indices, grid_edge_scalar)
@@ -84,14 +83,14 @@ class Predictor(Controller):
             
             grid_ptr += nprobe
             # output
-            if grid_ptr >= np.prod(self.ngfs):
+            if grid_ptr >= np.prod(ngfs):
                 preds = {
                     key: torch.cat(value_list, dim=0)
                     for key, value_list in pp.items()
                 }
-                self.save(data, preds, iframe=iframe, value_type='global')
+                self.save(data, preds, ngfs, iframe=iframe, value_type='global')
                 if self.args.contribute:
-                    atom_contributions = atom_contributions.view(natom, np.prod(self.ngfs), self.spin)
+                    atom_contributions = atom_contributions.view(natom, np.prod(ngfs), self.spin)
                     for inode, node_value in enumerate(atom_contributions):
                         atom_preds = {}
                         for ispin in range(self.spin):
@@ -101,7 +100,7 @@ class Predictor(Controller):
                             else:
                                 value_type = keys.CHARGE
                             atom_preds[value_type] = node_spin_value
-                        self.save(data, atom_preds, iframe=iframe, value_type=f'atom_{inode}')
+                        self.save(data, atom_preds, ngfs, iframe=iframe, value_type=f'atom_{inode}')
                     atom_contributions = None
                 grid_ptr = 0
                 ii, pp = defaultdict(list), defaultdict(list)
@@ -111,12 +110,13 @@ class Predictor(Controller):
         self,
         data: Dict[str, Tensor],
         preds: Dict[str, Tensor],
+        ngfs: np.ndarray,
         iframe: int,
         value_type: str,
     ):
         file = os.path.join(self.output_dir, f'{iframe}_{value_type}.{self.args.format}')
         scalar_data = {
-            key: value.reshape(*self.ngfs).detach().cpu().numpy()
+            key: value.reshape(*ngfs).detach().cpu().numpy()
             for key, value in preds.items()
         }
         write.write_data(data, probe_scalars=scalar_data, file_path=file, file_format=self.args.format)

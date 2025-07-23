@@ -195,7 +195,7 @@ class Controller(Runner):
         num_workers: int = None,
         epoch_size: int = None,
     ):
-        predict_ngfs = self.ngfs if hasattr(self, 'ngfs') else None
+        ngfs_str = self.args.ngfs if hasattr(self.args, 'ngfs') else None
         loader = get_loader(
             paths,
             self.args.mode,
@@ -211,7 +211,7 @@ class Controller(Runner):
             epoch_size=epoch_size,
             dtype=self.dtype,
             device=self.device,
-            predict_ngfs=predict_ngfs,
+            ngfs_str=ngfs_str,
             local_rank=self.local_rank,
             world_size=self.world_size,
             search_depth=self.args.search_depth,

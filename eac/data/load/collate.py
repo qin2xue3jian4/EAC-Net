@@ -36,6 +36,7 @@ class BatchCollater(Collater):
             },
             keys.FRAME_ID: data_or_batch[keys.FRAME_ID],
             keys.INFOS: data_or_batch[keys.INFOS],
+            keys.PROBE_GRID_NGFS: data_or_batch[keys.PROBE_GRID_NGFS],
         }
         
         for label in keys.LABELS.values():

@@ -39,7 +39,7 @@ def pre_parse_args():
     predict_parser = subparsers.add_parser('predict', parents=[base_parser], help='Apply a model to predict charge density from structures.')
     predict_parser.add_argument('-m', '--model', type=str, required=True, help='Model file path.')
     predict_parser.add_argument('-p', '--paths', type=str, action='append', help='The paths for predict.')
-    predict_parser.add_argument('-s', '--ngfs', type=str, required=True, help='The ngfs of output chg.')
+    predict_parser.add_argument('-s', '--ngfs', type=str, default='origin', help='The ngfs of output chg.')
     predict_parser.add_argument('--format', type=str, default='chgcar', help='The final format of output chg.')
     predict_parser.add_argument('-a', '--contribute', action='store_true', help='Whether to output the contributions of each atom.')
     

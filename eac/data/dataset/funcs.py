@@ -192,6 +192,7 @@ def tensordict_to_heterodata(tensordict: Dict[str, torch.Tensor]):
     heterodata[keys.ATOM].type = tensordict[f'{keys.ATOM}_{keys.TYPE}']
     heterodata[keys.PROBE].pos = tensordict[f'{keys.PROBE}_{keys.POS}']
     heterodata.cell = tensordict[keys.CELL]
+    heterodata[keys.PROBE_GRID_NGFS] = tensordict[keys.PROBE_GRID_NGFS]
     # edge
     for CENTER_KEY, EDGE_KEY in zip([keys.ATOM, keys.PROBE], [keys.ATOM_EDGE_KEY, keys.PROBE_EDGE_KEY]):
         heterodata[EDGE_KEY][keys.INDEX] = tensordict[f'{CENTER_KEY}_{keys.INDEX}'][[1,0]]

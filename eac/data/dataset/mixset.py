@@ -26,12 +26,12 @@ class MixDataset(Dataset):
     probe_cutoff: float
     probe_sel: int
     dtype: torch.dtype
-    predict_ngfs: np.ndarray
+    ngfs_str: str
     search_depth: int
     lazy_load: bool
     base_seed: int = 0
     def __post_init__(self):
-        assert self.mode != 'predict' or self.predict_ngfs is not None, 'Predict ngfs must be provided in predict mode.'
+        assert self.mode != 'predict' or self.ngfs_str is not None, 'Predict ngfs must be provided in predict mode.'
         self.readers = file_paths_to_readers(
             self.paths,
             self.out_type,
@@ -44,6 +44,7 @@ class MixDataset(Dataset):
         self.nframes: List[int] = []
         self.nprobes: List[int] = []
         self.batch_probes: List[int] = []
+        self.predict_ngfs = []
         for file_path, reader in self.readers.items():
             for group_key, group in zip(reader.group_keys, reader.groups):
                 final = f'{file_path}:{group_key}'
@@ -51,7 +52,23 @@ class MixDataset(Dataset):
                 self.groups.append(group)
                 self.nframes.append(group.nframe)
                 if self.out_type != 'potential':
-                    nprobe = np.prod(self.predict_ngfs) if self.mode == 'predict' else group.nprobe
+                    if self.mode == 'predict':
+                        if '*' in self.ngfs_str:
+                            ngfs = np.array(self.ngfs_str.split('*'), dtype=np.int64)
+                        elif self.ngfs_str == 'origin':
+                            assert hasattr(group, 'data_ngfs'), 'Origin ngfs mode need data contains ngfs info.'
+                            ngfs = group.data_ngfs
+                        else:
+                            try:
+                                length = float(self.ngfs_str)
+                                cell_lengths = np.linalg.norm(group.group['cell'], axis=-1).min(axis=0)
+                                ngfs = np.ceil(cell_lengths / length).astype(int)
+                            except ValueError as e:
+                                raise ValueError('Error ngfs input.')
+                        self.predict_ngfs.append(ngfs)
+                        nprobe = np.prod(ngfs)
+                    else:
+                        nprobe = group.nprobe
                     n_batch_probes = math.ceil(nprobe / self.probe_size)
                 else:
                     n_batch_probes = nprobe = 1
@@ -69,12 +86,19 @@ class MixDataset(Dataset):
         iprobes: slice = None,
     ):
         group = self.groups[igroup]
-        out_dict = group.get_iframe_iprobes(
-            iframe,
-            iprobes,
-            probe_in_ngfs = self.predict_ngfs,
-            return_label = self.mode != 'predict'
-        )
+        if isinstance(group, SpaceGroup):
+            ngfs = self.predict_ngfs[igroup] if self.mode == 'predict' else None
+            out_dict = group.get_iframe_iprobes(
+                iframe,
+                iprobes,
+                probe_in_ngfs = ngfs,
+                return_label = self.mode != 'predict'
+            )
+        else:
+            out_dict = group.get_iframe(
+                iframe,
+                return_label = self.mode != 'predict'
+            )
         herodata = transform(
             out_dict,
             atom_cutoff=self.atom_cutoff,
