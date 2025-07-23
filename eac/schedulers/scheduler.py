@@ -53,6 +53,8 @@ class Schedulers:
     def load_state_dict(self, state_dict: OrderedDict[str, Tensor]):
         self.ptr = state_dict['ptr']
         for i, scheduler in enumerate(self.scheduler_list):
+            if f'scheduler_{i}' not in state_dict:
+                continue
             this_state = state_dict[f'scheduler_{i}']
             scheduler.load_state_dict(this_state)
         return None

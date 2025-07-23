@@ -158,7 +158,8 @@ class Controller(Runner):
         class_str = type(model)
         self._log(f'class of model is {class_str}', 1)
         
-        self.state_dict = state_dict
+        if method != 'new':
+            self.state_dict = state_dict
         self.method = method
         self._log(f'Model is built.')
         
