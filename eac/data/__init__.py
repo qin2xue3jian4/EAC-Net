@@ -44,7 +44,7 @@ def get_loader(
         base_seed=base_seed,
     )
     
-    shuffle = mode == 'train'
+    shuffle = (mode == 'train' or (mode == 'test' and epoch_size != -1))
     loader = LoaderWrapper(
         dataset,
         frame_size=frame_size,

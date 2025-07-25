@@ -35,6 +35,7 @@ def pre_parse_args():
     test_parser.add_argument('--size', type=int, default=-1, help='The total size for test.')
     test_parser.add_argument('--format', type=str, default='npy', help='The total size for test.')
     test_parser.add_argument('--split', action='store_true', help='Show each file test result.')
+    test_parser.add_argument('--save', action='store_true', help='Save test result.')
     
     predict_parser = subparsers.add_parser('predict', parents=[base_parser], help='Apply a model to predict charge density from structures.')
     predict_parser.add_argument('-m', '--model', type=str, required=True, help='Model file path.')

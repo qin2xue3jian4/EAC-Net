@@ -81,6 +81,8 @@ class Tester(Controller):
             epoch_size=epoch_size,
         )
         self.model.eval()
+        self.shuffle = epoch_size != -1
+        self.split = self.args.split and not self.shuffle
         
     def run_probe(self):
         # prepare
@@ -96,17 +98,18 @@ class Tester(Controller):
         for idata, data in enumerate(tqdm.tqdm(self.loader, desc='Progress')):
             nprobe = data[keys.PROBE][keys.POS].shape[0]
             # atom representation
-            keep_same_frame = data[keys.FRAME_ID][0] == last_frame_id
-            if not keep_same_frame and self.args.split and idata > 0:
-                self.show_result(t1, ii, ll, pp, iframe=iframe)
-                ii, ll, pp = defaultdict(list), defaultdict(list), defaultdict(list)
+            if not self.shuffle:
+                keep_same_frame = data[keys.FRAME_ID][0] == last_frame_id
+                if not keep_same_frame and self.split and idata > 0:
+                    self.show_result(t1, ii, ll, pp, iframe=iframe)
+                    ii, ll, pp = defaultdict(list), defaultdict(list), defaultdict(list)
             
-            last_frame_id = data[keys.FRAME_ID][0]
-            if keep_same_frame and atom_representations is not None:
-                data[keys.ATOM]['features'] = atom_representations
-            if not keep_same_frame:
-                iframe += 1
-                self._log(f'Testing frame {iframe}: {last_frame_id}')
+                last_frame_id = data[keys.FRAME_ID][0]
+                if keep_same_frame and atom_representations is not None:
+                    data[keys.ATOM]['features'] = atom_representations
+                if not keep_same_frame:
+                    iframe += 1
+                    self._log(f'Testing frame {iframe}: {last_frame_id}')
             
             probe_empty = data[keys.PROBE][keys.POS].numel() == 0
             # empty probe
@@ -115,7 +118,7 @@ class Tester(Controller):
                     preds[key] = torch.zeros((nprobe,), dtype=self.dtype, device=self.device)
             else:
                 preds = self.model(data, out_type=self.out_type, return_atom_features=True)
-                if not keep_same_frame:
+                if not self.shuffle and not keep_same_frame:
                     atom_representations = preds[keys.ATOM_FEATURES]
             
             labels = graph_to_labels(data, preds.keys())
@@ -138,7 +141,8 @@ class Tester(Controller):
         self._log(f'loss: {loss.item():.3e}')
         for key, value in item_loss.items():
             self._log(f'{key}: {value:.3e}')
-        self.save(ii, ll, pp, iframe)
+        if self.args.save:
+            self.save(ii, ll, pp, iframe)
         if self.args.plot:
             self.plot(ii, ll, pp, iframe)
     
