@@ -149,6 +149,7 @@ class Controller(Runner):
             except:
                 state_dict = torch.load(checkpoint, map_location='cpu', weights_only=False)
             model.load_state_dict(state_dict['model_state'])
+            self._log(f'Resuming model from checkpoint: {checkpoint}', 1)
             method = 'checkpoint'
         
         if hasattr(model, 'atom_env_irreps'):
