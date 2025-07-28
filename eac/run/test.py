@@ -111,7 +111,7 @@ class Tester(Controller):
                     iframe += 1
                     self._log(f'Testing frame {iframe}: {last_frame_id}')
             
-            probe_empty = data[keys.PROBE][keys.POS].numel() == 0
+            probe_empty = data[keys.PROBE_EDGE_KEY][keys.INDEX].numel().numel() == 0
             # empty probe
             if probe_empty:
                 for key in space_keys:

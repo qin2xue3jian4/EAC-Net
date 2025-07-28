@@ -38,7 +38,7 @@ class Predictor(Controller):
         for data in tqdm.tqdm(self.loader):
             natom = data[keys.ATOM][keys.POS].shape[0]
             nprobe = data[keys.PROBE][keys.POS].shape[0]
-            ngfs = data[keys.PROBE_GRID_NGFS].cpu().detach().cpu().numpy()
+            ngfs = data[keys.PROBE_GRID_NGFS][0].cpu().detach().cpu().numpy().astype(int)
             
             # atom representation
             keep_same_frame = data[keys.FRAME_ID][0] == last_frame_id
@@ -53,7 +53,7 @@ class Predictor(Controller):
                 atom_contributions = torch.zeros((natom*np.prod(ngfs), self.spin), dtype=self.dtype)
 
             # empty probe
-            probe_empty = data[keys.PROBE][keys.POS].numel() == 0
+            probe_empty = data[keys.PROBE_EDGE_KEY][keys.INDEX].numel() == 0
             if probe_empty:
                 preds = {}
                 for key in space_keys:
