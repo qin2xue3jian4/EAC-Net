@@ -52,9 +52,13 @@ class Runner:
         self.ddp_opening = self.world_size > 1
 
         if self.using_cuda:
-            visible_rank = self.local_rank % torch.cuda.device_count()
-            self.device = torch.device(f'cuda:{visible_rank}')
-            self.device_ids = [visible_rank,]
+            if ':' in self.args.device:
+                self.device = torch.device(self.args.device)
+                self.device_ids = [int(self.args.device.split(':')[1]),]
+            else:
+                visible_rank = self.local_rank % torch.cuda.device_count()
+                self.device = torch.device(f'cuda:{visible_rank}')
+                self.device_ids = [visible_rank,]
         else:
             self.device = torch.device('cpu')
             self.device_ids = None
