@@ -59,7 +59,7 @@ class Trainer(Controller):
         self._log('Loading datasets.')
         self.loaders: Dict[str, LoaderWrapper] = {}
         for flow in ['train', 'valid', 'test']:
-            if flow not in self.cfg.data:
+            if flow not in self.cfg.data or self.cfg.data[flow] is None:
                 continue
             frame_size = self.args.frame_size or self.cfg.data[flow].frame_size
             probe_size = self.args.probe_size or self.cfg.data[flow].probe_size

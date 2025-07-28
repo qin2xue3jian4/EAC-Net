@@ -46,3 +46,4 @@ data:
     probe_size: 5
     num_workers: 0
     epoch_size: 5
+  test: null
