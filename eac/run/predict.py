@@ -1,13 +1,13 @@
 import os
 import tqdm
 import torch
+from tqdm import tqdm
 import numpy as np
-from typing import Dict, List
 from collections import defaultdict
-from torch import Tensor
 
 from .run import Controller
-from ..data import keys, write
+from ..data import keys
+from ..data.write import Writer
 
 class Predictor(Controller):
     def __post_init__(self):
@@ -26,98 +26,44 @@ class Predictor(Controller):
         self.model.eval()
     
     def run_probe(self):
-        # prepare
-        ii, pp = defaultdict(list), defaultdict(list)
-        space_keys = [keys.CHARGE]
-        if self.spin == 2:
-            space_keys.append(keys.CHARGE_DIFF)
-        last_frame_id, atom_representations, atom_contributions = 'none', None, None
-        iframe = 0
-        grid_ptr = 0
-        
-        for data in tqdm.tqdm(self.loader):
-            natom = data[keys.ATOM][keys.POS].shape[0]
-            nprobe = data[keys.PROBE][keys.POS].shape[0]
-            ngfs = data[keys.PROBE_GRID_NGFS][0].cpu().detach().cpu().numpy().astype(int)
-            
-            # atom representation
-            keep_same_frame = data[keys.FRAME_ID][0] == last_frame_id
-            last_frame_id = data[keys.FRAME_ID][0]
-            if keep_same_frame and atom_representations is not None:
-                data[keys.ATOM][keys.FEATURES] = atom_representations
-            if not keep_same_frame:
-                iframe += 1
-                self._log(f'Predicting frame {iframe}: {last_frame_id}')
-            # atom contributions
-            if atom_contributions is None and self.args.contribute:
-                atom_contributions = torch.zeros((natom*np.prod(ngfs), self.spin), dtype=self.dtype)
+        ifile, group_idx = 0, 0
+        for istructure, (frame_id, igroup, iframe, result) in enumerate(self.inference_probe_loader(
+            self.loader,
+            need_contribute=self.args.contribute,
+            need_label=False
+        )):
+            base_filename = self.generate_filename(frame_id, istructure)
+            if group_idx == 0:
+                writer = Writer()
+            if iframe == 0:
+                group_idx += 1
+                space_group = self.loader.dataset.groups[igroup]
+                natom = space_group.group[keys.ATOM_POS].shape[1]
+                ngfs = self.loader.dataset.predict_ngfs[igroup]
+                nframe = self.loader.dataset.nframes[igroup]
+                frame_results = []
+            frame_results.append(result)
+            if iframe == nframe - 1:
+                writer.append_result(frame_id, space_group, frame_results, sample_probe=False, ngfs=ngfs)
 
-            # empty probe
-            probe_empty = data[keys.PROBE_EDGE_KEY][keys.INDEX].numel() == 0
-            if probe_empty:
-                preds = {}
-                for key in space_keys:
-                    preds[key] = torch.zeros((nprobe,), dtype=self.dtype, device=self.device)
-            else:
-                preds = self.model(data, out_type=self.out_type, return_atom_features=True)
-                if not keep_same_frame:
-                    atom_representations = preds[keys.ATOM_FEATURES]
-            
-            # record preds and grid position
-            for key in preds:
-                if key not in keys.LABELS:
-                    continue
-                pp[key].append(preds[key].detach())
-            ii[keys.PROBE].append(data[keys.PROBE][keys.POS])
-            
-            # record node contribution
-            if self.args.contribute and not probe_empty:
-                edge = data[keys.PROBE_EDGE_KEY]
-                atom_index, probe_index = edge[keys.INDEX]
-                grid_edge_scalar = edge[keys.CHARGE].detach().cpu()
-                linear_indices = (atom_index * np.prod(ngfs) + probe_index + grid_ptr).cpu()
-                expanded_indices = linear_indices.unsqueeze(-1).expand(-1, self.spin)
-                flat_charge = torch.zeros_like(atom_contributions)
-                flat_charge.scatter_add_(0, expanded_indices, grid_edge_scalar)
-                atom_contributions += flat_charge
-            
-            grid_ptr += nprobe
-            # output
-            if grid_ptr >= np.prod(ngfs):
-                preds = {
-                    key: torch.cat(value_list, dim=0)
-                    for key, value_list in pp.items()
-                }
-                self.save(data, preds, ngfs, iframe=iframe, value_type='global')
-                if self.args.contribute:
-                    atom_contributions = atom_contributions.view(natom, np.prod(ngfs), self.spin)
-                    for inode, node_value in enumerate(atom_contributions):
-                        atom_preds = {}
-                        for ispin in range(self.spin):
-                            node_spin_value = node_value[:,ispin]
-                            if self.spin == 2:
-                                value_type = keys.CHARGE if ispin == 0 else keys.CHARGE_DIFF
-                            else:
-                                value_type = keys.CHARGE
-                            atom_preds[value_type] = node_spin_value
-                        self.save(data, atom_preds, ngfs, iframe=iframe, value_type=f'atom_{inode}')
-                    atom_contributions = None
-                grid_ptr = 0
-                ii, pp = defaultdict(list), defaultdict(list)
-                
-        self._log('Finished!')
-    def save(
-        self,
-        data: Dict[str, Tensor],
-        preds: Dict[str, Tensor],
-        ngfs: np.ndarray,
-        iframe: int,
-        value_type: str,
-    ):
-        file = os.path.join(self.output_dir, f'{iframe}_{value_type}.{self.args.format}')
-        scalar_data = {
-            key: value.reshape(*ngfs).detach().cpu().numpy()
-            for key, value in preds.items()
-        }
-        write.write_data(data, probe_scalars=scalar_data, file_path=file, file_format=self.args.format)
-        return None
+            if self.args.contribute:
+                atom_contributions = result['atom_contributions'].view(natom, np.prod(ngfs), self.spin)
+                for inode, node_value in enumerate(atom_contributions):
+                    atom_preds = {}
+                    for ispin in range(self.spin):
+                        node_spin_value = node_value[:,ispin]
+                        if self.spin == 2:
+                            value_type = keys.CHARGE if ispin == 0 else keys.CHARGE_DIFF
+                        else:
+                            value_type = keys.CHARGE
+                        atom_preds[value_type] = [node_spin_value]
+                    file = os.path.join(self.output_dir, f'{base_filename}_atom_{inode}.chgcar')
+                    writer.write_to_chgcar(file, atom_preds, iframe, ngfs)
+            ngroup = self.loader.dataset.ngroups[ifile]
+            if group_idx >= ngroup:
+                base_filename = self.generate_filename(frame_id, istructure)
+                file = os.path.join(self.output_dir, f'{base_filename}.{self.args.format}')
+                writer.write_to_file(file)
+                ifile += 1
+                group_idx = 0
+        return

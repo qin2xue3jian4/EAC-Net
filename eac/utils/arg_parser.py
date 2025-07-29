@@ -36,6 +36,8 @@ def pre_parse_args():
     test_parser.add_argument('--format', type=str, default='npy', help='The total size for test.')
     test_parser.add_argument('--split', action='store_true', help='Show each file test result.')
     test_parser.add_argument('--save', action='store_true', help='Save test result.')
+    test_parser.add_argument('--loglevel', type=str, default='group', help='The log level.')
+    test_parser.add_argument('--output-fmt', type=str, default='{istructure}-{filename}-{groupkey}', help='Output filename format (supports {filename} placeholder).')
     
     predict_parser = subparsers.add_parser('predict', parents=[base_parser], help='Apply a model to predict charge density from structures.')
     predict_parser.add_argument('-m', '--model', type=str, required=True, help='Model file path.')
@@ -43,6 +45,9 @@ def pre_parse_args():
     predict_parser.add_argument('-s', '--ngfs', type=str, default='origin', help='The ngfs of output chg.')
     predict_parser.add_argument('--format', type=str, default='chgcar', help='The final format of output chg.')
     predict_parser.add_argument('-a', '--contribute', action='store_true', help='Whether to output the contributions of each atom.')
+    predict_parser.add_argument('--loglevel', type=str, default='group', help='The log level.')
+    predict_parser.add_argument('--output-fmt', type=str, default='{istructure}-{filename}-{groupkey}', help='Output filename format (supports {filename} placeholder).')
+    
     
     args, unknown_args = parser.parse_known_args()
     

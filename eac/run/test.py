@@ -10,6 +10,7 @@ from matplotlib.axes._axes import Axes
 from ..data import keys
 from ..losses.loss import MixedLoser
 from .run import Controller, graph_to_labels
+from ..data.write import Writer
 
 def save_3d_picture(
     points: np.ndarray,
@@ -85,52 +86,35 @@ class Tester(Controller):
         self.split = self.args.split and not self.shuffle
         
     def run_probe(self):
-        # prepare
-        ii, ll, pp = defaultdict(list), defaultdict(list), defaultdict(list)
-        space_keys = [keys.CHARGE]
-        if self.spin == 2:
-            space_keys.append(keys.CHARGE_DIFF)
-        last_frame_id, atom_representations = 'none', None
-        ndata = len(self.loader)
-        iframe = 0
-        
-        t1 = time.time()
-        for idata, data in enumerate(tqdm.tqdm(self.loader, desc='Progress')):
-            nprobe = data[keys.PROBE][keys.POS].shape[0]
-            # atom representation
-            if not self.shuffle:
-                keep_same_frame = data[keys.FRAME_ID][0] == last_frame_id
-                if not keep_same_frame and self.split and idata > 0:
-                    self.show_result(t1, ii, ll, pp, iframe=iframe)
-                    ii, ll, pp = defaultdict(list), defaultdict(list), defaultdict(list)
-            
-                last_frame_id = data[keys.FRAME_ID][0]
-                if keep_same_frame and atom_representations is not None:
-                    data[keys.ATOM]['features'] = atom_representations
-                if not keep_same_frame:
-                    iframe += 1
-                    self._log(f'Testing frame {iframe}: {last_frame_id}')
-            
-            probe_empty = data[keys.PROBE_EDGE_KEY][keys.INDEX].numel().numel() == 0
-            # empty probe
-            if probe_empty:
-                for key in space_keys:
-                    preds[key] = torch.zeros((nprobe,), dtype=self.dtype, device=self.device)
-            else:
-                preds = self.model(data, out_type=self.out_type, return_atom_features=True)
-                if not self.shuffle and not keep_same_frame:
-                    atom_representations = preds[keys.ATOM_FEATURES]
-            
-            labels = graph_to_labels(data, preds.keys())
-            for key in labels:
-                ll[key].append(labels[key].detach())
-                pp[key].append(preds[key].detach())
-            ii[keys.PROBE].append(data[keys.PROBE][keys.POS].detach())
-            
-        self.show_result(t1, ii, ll, pp, ndata)
-        
+        ifile, group_idx = 0, 0
+        for istructure, (frame_id, igroup, iframe, result) in enumerate(self.inference_probe_loader(
+            self.loader,
+            need_contribute=False,
+            need_label=True
+        )):
+            base_filename = self.generate_filename(frame_id, istructure)
+            if group_idx == 0:
+                writer = Writer()
+            if iframe == 0:
+                group_idx += 1
+                space_group = self.loader.dataset.groups[igroup]
+                natom = space_group.group[keys.ATOM_POS].shape[1]
+                ngfs = space_group.group[keys.PROBE_GRID_SHAPE][1:]
+                nframe = self.loader.dataset.nframes[igroup]
+                frame_results = []
+            frame_results.append(result)
+            if iframe == nframe - 1:
+                writer.append_result(frame_id, space_group, frame_results, sample_probe=False, ngfs=ngfs)
+
+            ngroup = self.loader.dataset.ngroups[ifile]
+            if group_idx >= ngroup:
+                base_filename = self.generate_filename(frame_id, istructure)
+                file = os.path.join(self.output_dir, f'{base_filename}.{self.args.format}')
+                writer.write_to_file(file)
+                ifile += 1
+                group_idx = 0
         return
-    
+
     def show_result(self, t1, ii, ll, pp, iframe):
         t2 = time.time() - t1
         self._log(f'used time: {t2:.3f}s')
