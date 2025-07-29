@@ -1,21 +1,24 @@
 import logging
 import torch
-from typing import Dict
 from dataclasses import dataclass
 from torch.utils.data import DataLoader
 
 from .sample import EACSampler
 from ..dataset import MixDataset
 from .collate import BatchCollater
-from ...utils.envs import setup_seed
 
 @dataclass
 class LoaderWrapper:
     dataset: MixDataset
     frame_size: int
     num_workers: int
-    shuffle: bool
     epoch_size: int
+    probe_size: int
+    
+    frame_shuffle: bool
+    probe_shuffle: bool
+    base_seed: int
+    
     device: torch.device
     local_rank: int
     world_size: int
@@ -23,7 +26,10 @@ class LoaderWrapper:
         
         self.sampler = EACSampler(
             self.dataset,
-            self.shuffle,
+            probe_size=self.probe_size,
+            frame_shuffle=self.frame_shuffle,
+            probe_shuffle=self.probe_shuffle,
+            base_seed=self.base_seed,
             rank=self.local_rank,
             world_size=self.world_size,
         )
@@ -37,7 +43,6 @@ class LoaderWrapper:
             sampler=self.sampler,
             num_workers=self.num_workers,
             collate_fn=BatchCollater(self.dataset),
-            worker_init_fn = setup_seed,
             pin_memory = True,
             prefetch_factor = (3 if self.num_workers > 0 else None),
             persistent_workers = (True if self.num_workers > 0 else False),
@@ -74,18 +79,9 @@ class LoaderWrapper:
         except StopIteration:
             self.iteration = iter(self.loader)
             outdata = next(self.iteration)
-        outdata2: Dict[str, Dict[str, torch.Tensor]] = {}
-        for key, value in outdata.items():
-            if isinstance(value, dict):
-                outdata2[key] = {
-                    subkey: subvalue.to(self.device) if isinstance(subvalue, torch.Tensor) else subvalue
-                    for subkey, subvalue in value.items()
-                }
-            else:
-                outdata2[key] = value.to(self.device) if isinstance(value, torch.Tensor) else value
-
+        outdata = outdata.to(self.device)
         self.idx_ptr += 1
-        return outdata2
+        return outdata
 
     def close(self):
         for reader in self.dataset.readers.values():

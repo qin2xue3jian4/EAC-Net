@@ -9,7 +9,7 @@ from .. import keys
 from ..physics import get_periodic_indexs
 
 DEFAULT_NODE_SEL = 40
-periodic_indexs = get_periodic_indexs().numpy().astype(np.float64)
+periodic_indexs = get_periodic_indexs()
 
 # neighbor list build
 def _edge_src_index_optimized(edge_src):
@@ -135,72 +135,71 @@ def atom_coord_to_index(
     return edge_index_ed
 
 # transform
-def npydict_to_tensordict(
-    npydict: Dict[str, np.ndarray],
-    dtype: torch.dtype,
+def add_edge_index(
+    heterodata: HeteroData,
+    index_3d: torch.Tensor,
+    edge_key: str,
 ):
-    npydict[keys.PERIODIC_VECTORS] = np.matmul(periodic_indexs, npydict[keys.CELL])
-    tensordict = {}
-    for key, value in npydict.items():
-        if isinstance(value, np.ndarray):
-            tensorvalue = torch.from_numpy(value)
-            if key == keys.ATOM_TYPE:
-                tensordict[key] = tensorvalue.to(dtype=torch.long)
-            else:
-                tensordict[key] = tensorvalue.to(dtype=dtype)
-        else:
-            tensordict[key] = value
-    return tensordict
+    heterodata[edge_key][keys.INDEX] = index_3d[[1,0]]
+    setattr(heterodata[edge_key], keys.PERIODIC_INDEX, index_3d[2])
+    return
 
 def construct_adjacency(
-    tensordict: Dict[str, torch.Tensor],
+    heterodata: HeteroData,
     atom_cutoff: float,
     atom_sel: int,
     probe_cutoff: float,
     probe_sel: int,
 ):
-    periodic_vectors = tensordict[keys.PERIODIC_VECTORS]
+    cell = heterodata[keys.GLOBAL][keys.CELL]
+    periodic_vectors = torch.matmul(periodic_indexs.to(cell.dtype), cell)
     # atom
-    atom_pos = tensordict[keys.ATOM_POS]
-    atom_numbers = tensordict[keys.ATOM_TYPE]
     atom_index_3d = atom_coord_to_index(
-        atom_pos,
-        atom_numbers,
+        heterodata[keys.ATOM][keys.POS],
+        heterodata[keys.ATOM][keys.TYPE],
         periodic_vectors,
         atom_cutoff,
         atom_sel,
     )
+    add_edge_index(heterodata, atom_index_3d, keys.ATOM_EDGE_KEY)
     # probe
-    probe_pos = tensordict[keys.PROBE_POS]
-    probe_index_3d = radius_3d(
-        probe_pos,
-        atom_pos,
-        periodic_vectors,
-        rcut=probe_cutoff,
-        sel=probe_sel,
-        skip_self_neighbor=False,
-        strict_nearest=True,
-    )
-    tensordict[keys.ATOM_EDGE_INDEX] = atom_index_3d
-    tensordict[keys.PROBE_EDGE_INDEX] = probe_index_3d
-    return tensordict
+    if keys.PROBE in heterodata.node_types:
+        probe_index_3d = radius_3d(
+            heterodata[keys.PROBE][keys.POS],
+            heterodata[keys.ATOM][keys.POS],
+            periodic_vectors,
+            rcut=probe_cutoff,
+            sel=probe_sel,
+            skip_self_neighbor=False,
+            strict_nearest=True,
+        )
+        add_edge_index(heterodata, probe_index_3d, keys.PROBE_EDGE_KEY)
+    return
 
-def tensordict_to_heterodata(tensordict: Dict[str, torch.Tensor]):
+def npydict_to_heterodata(
+    npydict: Dict[str, np.ndarray],
+    dtype: torch.dtype,
+):
     heterodata = HeteroData()
-    # node and global
-    heterodata[keys.ATOM].pos = tensordict[f'{keys.ATOM}_{keys.POS}']
-    heterodata[keys.ATOM].type = tensordict[f'{keys.ATOM}_{keys.TYPE}']
-    heterodata[keys.PROBE].pos = tensordict[f'{keys.PROBE}_{keys.POS}']
-    heterodata.cell = tensordict[keys.CELL]
-    heterodata[keys.PROBE_GRID_NGFS] = tensordict[keys.PROBE_GRID_NGFS]
-    # edge
-    for CENTER_KEY, EDGE_KEY in zip([keys.ATOM, keys.PROBE], [keys.ATOM_EDGE_KEY, keys.PROBE_EDGE_KEY]):
-        heterodata[EDGE_KEY][keys.INDEX] = tensordict[f'{CENTER_KEY}_{keys.INDEX}'][[1,0]]
-        setattr(heterodata[EDGE_KEY], keys.PERIODIC_INDEX, tensordict[f'{CENTER_KEY}_{keys.INDEX}'][2])
+    heterodata[keys.ATOM][keys.POS] = torch.from_numpy(npydict[keys.ATOM_POS]).to(dtype)
+    heterodata[keys.ATOM][keys.TYPE] = torch.from_numpy(npydict[keys.ATOM_TYPE]).to(torch.long)
+    # probe
+    if keys.PROBE_POS in npydict:
+        heterodata[keys.PROBE][keys.POS] = torch.from_numpy(npydict[keys.PROBE_POS]).to(dtype)
+        heterodata[keys.PROBE][keys.IDXS] = torch.from_numpy(npydict[f'{keys.PROBE}_{keys.IDXS}']).to(torch.long)
     # label
     for label in keys.LABELS.values():
-        if label.key in tensordict:
-            heterodata[label.parent][keys.REAL_PREFIX+label.key] = tensordict[label.key]
+        if label.key in npydict:
+            heterodata[label.parent][keys.REAL_PREFIX+label.key] = torch.from_numpy(npydict[label.key]).to(dtype)
+    # global
+    for key, type_convert in keys.GLOBAL_KEYS.items():
+        if key in npydict:
+            if type_convert == 'long':
+                heterodata[keys.GLOBAL][key] = torch.from_numpy(npydict[key]).to(torch.long)
+            elif type_convert == 'dtype':
+                heterodata[keys.GLOBAL][key] = torch.from_numpy(npydict[key]).to(dtype)
+            else:
+                heterodata[keys.GLOBAL][key] = npydict[key]
     return heterodata
 
 def transform(
@@ -211,7 +210,6 @@ def transform(
     probe_sel: int,
     dtype: torch.dtype
 ):
-    tensordict = npydict_to_tensordict(npydict, dtype)
-    tensordict = construct_adjacency(tensordict, atom_cutoff, atom_sel, probe_cutoff, probe_sel)
-    heterodata = tensordict_to_heterodata(tensordict)
+    heterodata = npydict_to_heterodata(npydict, dtype)
+    construct_adjacency(heterodata, atom_cutoff, atom_sel, probe_cutoff, probe_sel)
     return heterodata

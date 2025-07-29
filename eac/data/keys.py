@@ -7,6 +7,7 @@ BATCH = 'batch'
 CELL = 'cell'
 POS = 'pos'
 TYPE = 'type'
+IDXS = 'idxs'
 ATTR = 'attrs'
 FEATURES = 'features'
 FRAME_ID = 'frame_id'
@@ -68,6 +69,12 @@ class Label:
     key: str
     simple: str
     progress: str
+
+GLOBAL_KEYS = {
+    CELL: 'dtype',
+    PROBE_GRID_NGFS: 'long',
+    FRAME_ID: 'origin',
+}
 
 LABELS = {
     ENERGY: Label(GLOBAL, ENERGY, 'e', 'potential'),

@@ -87,7 +87,7 @@ def file_paths_to_reader_modes(
 
 def file_paths_to_readers(
     file_paths: Union[List[str], str],
-    out_type: str = 'mixed',
+    out_probe: bool = True,
     root_dir: str = None,
     lazy_load: bool = False,
     search_depth: int = 6,
@@ -98,7 +98,7 @@ def file_paths_to_readers(
         readers[real_path] = ReaderFactory.create(
             reader_mode,
             file_path=real_path,
-            out_type=out_type,
+            out_probe=out_probe,
             lazy_load=lazy_load
         )
     
