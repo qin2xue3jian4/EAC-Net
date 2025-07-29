@@ -52,7 +52,7 @@ class ProbeEdgeWeightNet(torch.nn.Module):
             edge[keys.WEIGHT] = edge[keys.WEIGHT_SMOOTH]
             return data
         
-        nprobe = data[keys.PROBE][keys.NUM_NODES]
+        nprobe = data[keys.PROBE][keys.POS].shape[0]
         node_probe = edge[keys.INDEX][1]
         
         simpled_edge_features = edge[keys.FEATURES]
@@ -117,7 +117,7 @@ class ChargeHead(torch.nn.Module):
         self,
         data: Dict[str, Tensor],
     ):
-        nprobe = data[keys.PROBE][keys.NUM_NODES]
+        nprobe = data[keys.PROBE][keys.POS].shape[0]
         edge = data[keys.PROBE_EDGE_KEY]
         node_probe = edge[keys.INDEX][1]
         

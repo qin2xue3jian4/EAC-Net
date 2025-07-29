@@ -194,7 +194,7 @@ class AtomInteractionLayer(BaseInteractionLayer):
             edge_features,
             node_dst,
             dim=0,
-            dim_size=data[self.src][keys.NUM_NODES]
+            dim_size=data[self.src][keys.POS].shape[0]
         )
         dst_node_features = self.dst_feature_linear(dst_node_features)
         
