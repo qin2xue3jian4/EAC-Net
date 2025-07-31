@@ -77,6 +77,6 @@ probe:
   charge_head:
     neuron: ${model.charge_neurons}
     active: silu
-    bias: True
+    bias: true
     idt: true
     resnet: true

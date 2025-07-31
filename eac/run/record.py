@@ -35,7 +35,7 @@ key_simply = {
     keys.CHARGE: 'c',
     keys.CHARGE_DIFF: 'd',
     keys.CHARGE_UP: 'u',
-    keys.CHARGE_DOWN: 'd',
+    keys.CHARGE_DOWN: 'w',
 }
 
 # move mean
@@ -85,8 +85,14 @@ class Recorder(Runner):
         ]
         first_line = '#       step'
         for ikey, key in enumerate(simplys):
+            if 'e' in key or 'f' in key or 'v' in key:
+                loss_type = self.cfg.loss.potential_item_func
+            elif 'c' in key or 'd' in key or 'u' in key or 'w' in key:
+                loss_type = self.cfg.loss.probe_item_func
+            else:
+                loss_type = ''
             for flow in trainer.flows:
-                title = f'rmse{key}_{flow_simply[flow]}'
+                title = f'{loss_type}{key}_{flow_simply[flow]}'
                 first_line += f'{title:>12s}'
             if ikey == 0:
                 continue
@@ -140,6 +146,7 @@ class Recorder(Runner):
                 plt.close()
                 continue
             ax.set_yscale(self.cfg.record.loss_yscale)
+            ax.set_xscale(self.cfg.record.loss_xscale)
             ax.set_xlabel('epoch')
             ax.set_ylabel('loss')
             ax.tick_params(axis='x', which='both', top=True, bottom=True, labeltop=False, labelbottom=True)
@@ -172,7 +179,7 @@ class Recorder(Runner):
             self.lcurve_f.close()
         final_file = os.path.join(self.model_path, f'{self.cfg.record.save_prefix}.{self.cfg.record.save_suffix}')
         model_state = {
-            'model_state': trainer.module.state_dict(),
+            'model_state': trainer.ema.shadow if hasattr(trainer, 'ema') else trainer.module.state_dict(),
             'settings': OmegaConf.to_container(self.cfg, resolve=True),
         }
         torch.save(model_state, final_file)
@@ -218,7 +225,8 @@ class Recorder(Runner):
         model_state = {
             'settings': OmegaConf.to_container(self.cfg, resolve=True),
             'model_state': trainer.module.state_dict(),
-            
+
+            'ema': trainer.ema.shadow,
             'optimizer': trainer.optimizer.state_dict(),
             'scheduler': trainer.scheduler.state_dict(),
             'losser': trainer.losser.state_dict(),
@@ -251,6 +259,7 @@ class Recorder(Runner):
         train_step: int,
         lr: float,
         loss_keys: List[str],
+        decay: float,
     ):
         used_time = time.time() - self.times['epoch_start']
         msg = f'Epoch {epoch} - step {train_step}: time: {used_time:.2f}s, lr={lr:.3e}, loss='
@@ -272,7 +281,7 @@ class Recorder(Runner):
             ]
             msg += f', {key}=' + '/'.join(item_str)
         
-        msg += '.'
+        msg += f', ema = {decay:.4f}.'
         self._log(msg)
         
         return
@@ -333,13 +342,6 @@ class Recorder(Runner):
                 f'{flow}: {trainer.args.epoch_size or trainer.cfg.data[flow].epoch_size}'
                 for flow in trainer.loaders
             ])
-            # nepoch = self.cfg.nepoch
-            # epoch_size = trainer.args.epoch_size or trainer.cfg.data['train'].epoch_size
-            # frame_size = trainer.args.frame_size or trainer.cfg.data['train'].frame_size
-            # size_msg = f'Nepoch {nepoch} x epoch size {epoch_size} x nframe {frame_size}'
-            # if trainer.out_type != 'potential':
-            #     probe_size = trainer.args.probe_size or trainer.cfg.data['train'].probe_size
-            #     size_msg += f' x nprobe {probe_size}'
             self._log(f'Nepoch {self.cfg.nepoch} x epoch size ({flow_msg}).')
             
             if trainer.start_epoch > 1:
@@ -390,16 +392,16 @@ class Recorder(Runner):
             if flow_type == trainer.flows[-1]:
                 
                 self.print_lcurve(trainer)
-                self.print_epoch_log(epoch, trainer.train_step, trainer.lr, trainer.losser.KEYS)
+                self.print_epoch_log(epoch, trainer.train_step, trainer.lr, trainer.losser.KEYS, trainer.ema.decay)
+                trainer.break_train = os.path.exists(os.path.join(self.output_dir, 'stop'))
                 
-                
-                if epoch % self.cfg.record.log_freq == 0:
+                if epoch % self.cfg.record.log_freq == 0 or trainer.break_train:
                     self.print_summary_log(epoch, trainer)
                 
-                if self.args.plot and epoch % self.cfg.record.plot_freq == 0:
+                if (self.args.plot and epoch % self.cfg.record.plot_freq == 0) or trainer.break_train:
                     self.plot_loss(trainer.losser.KEYS)
                 
-                if epoch % self.cfg.record.save_freq == 0:
+                if epoch % self.cfg.record.save_freq == 0 or trainer.break_train:
                     self.save_checkpoint(epoch, trainer)
             return None
         return wrapper

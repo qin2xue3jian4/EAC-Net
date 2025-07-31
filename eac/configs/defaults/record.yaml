@@ -2,11 +2,12 @@ record:
   log_freq: 10
   plot_freq: 50
   plot: true
+  loss_xscale: linear
   loss_yscale: log
   loss_img: loss.png
   save_freq: 100
   save_prefix: model
   save_suffix: pt
   loss_func: mean
-  margin: 5
+  margin: 0
   speed: false
