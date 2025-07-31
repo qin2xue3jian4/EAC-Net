@@ -76,7 +76,7 @@ class MixedLoser(torch.nn.Module):
             self.sigmas = torch.nn.Parameter(sigmas)
             self.sigmas.requires_grad = True
         else:
-            self.lr = cfg.lr.start_lr if hasattr(cfg, 'lr') else 1.0
+            self.lr = cfg.run.start_lr if hasattr(cfg, 'lr') else 1.0
             self.origin_ws = torch.nn.Parameter(torch.tensor(origin_ws))
             self.origin_ws.requires_grad = False
             self.end_ws = torch.tensor(end_ws)

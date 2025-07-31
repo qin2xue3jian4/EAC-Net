@@ -1,5 +1,8 @@
-lr:
+run:
+  optim_type: adam
   start_lr: 0.003
+  weight_decay: 0.0
+  ema_decay: 0.99
   schedulers:
   - type: stable
     nepoch: 300

@@ -7,7 +7,7 @@ defaults:
   - hydra: default
   - defaults/data@_here_
   - model: space
-  - defaults/lr@_here_
+  - defaults/run@_here_
   - defaults/record@_here_
   - defaults/loss@_here_
   - _self_

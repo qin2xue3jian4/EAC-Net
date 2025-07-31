@@ -141,11 +141,12 @@ class Controller(Runner):
             method = 'new'
         
         # build
-        self.module = model = get_model(self.cfg)
-        model = model.to(device=self.device, dtype=self.dtype)
+        model = get_model(self.cfg)
+        self.module = model = model.to(device=self.device, dtype=self.dtype)
         if restored:
             finetune = hasattr(self.args, 'finetune') and self.args.finetune
-            msgs = model.safely_load_state_dict(state_dict['model_state'], finetune)
+            model_state = state_dict.get('ema', state_dict['model_state'])
+            msgs = model.safely_load_state_dict(model_state, finetune)
             for msg in msgs:
                 self._log(msg, 1, loglevel='warn')
         
