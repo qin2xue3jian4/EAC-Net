@@ -21,7 +21,7 @@ class EACSampler:
     def init_env(self):
         ndata = len(self.dataset)
         if self.frame_shuffle:
-            ss  = np.random.SeedSequence(self.base_seed, spawn_key=(self.niter))
+            ss  = np.random.SeedSequence(self.base_seed, spawn_key=(self.niter,))
             rng = np.random.default_rng(ss)
             if ndata > MAX_SIZE:
                 full_perm = rng.choice(ndata, size=int(MAX_SIZE), replace=False).tolist()
