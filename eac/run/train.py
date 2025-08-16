@@ -1,3 +1,4 @@
+import os
 import torch
 import numpy as np
 from typing import Dict
@@ -58,6 +59,15 @@ class Trainer(Controller):
     def get_loaders(self):
         self._log('Loading datasets.')
         self.loaders: Dict[str, LoaderWrapper] = {}
+        if self.cfg.data.exclude_keys is None:
+            exclude_keys = None
+        elif isinstance(self.cfg.data.exclude_keys, str):
+            assert os.path.exists(self.cfg.data.exclude_keys)
+            with open(self.cfg.data.exclude_keys) as f:
+                exclude_keys = [line.strip() for line in f.readlines()]
+        else:
+            assert isinstance(self.cfg.data.exclude_keys, list)
+            exclude_keys = self.cfg.data.exclude_keys
         for flow in ['train', 'valid', 'test']:
             if flow not in self.cfg.data or self.cfg.data[flow] is None:
                 continue
@@ -74,6 +84,7 @@ class Trainer(Controller):
                 probe_size=probe_size,
                 num_workers=num_workers,
                 epoch_size=epoch_size,
+                exclude_keys=exclude_keys,
             )
             nfile = len(loader.dataset.readers)
             ngroup = len(loader.dataset.groups)

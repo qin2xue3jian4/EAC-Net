@@ -28,6 +28,7 @@ class MixDataset(Dataset):
     ngfs_str: str
     search_depth: int
     lazy_load: bool
+    exclude_keys: List[str]
     def __post_init__(self):
         assert self.mode != 'predict' or self.ngfs_str is not None, 'Predict ngfs must be provided in predict mode.'
         self.readers = file_paths_to_readers(
@@ -43,6 +44,8 @@ class MixDataset(Dataset):
         self.nframes: List[int] = []
         for file_path, reader in self.readers.items():
             for group_key, group in zip(reader.group_keys, reader.groups):
+                if self.exclude_keys is not None and group_key in self.exclude_keys:
+                    continue
                 final = f'{file_path}:{group_key}'
                 self.group_keys.append(final)
                 self.groups.append(group)

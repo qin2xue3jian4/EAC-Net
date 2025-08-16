@@ -21,6 +21,7 @@ def get_loader(
     dtype: torch.dtype = torch.float32,
     device: torch.device = torch.device('cpu'),
     ngfs_str: str = None,
+    exclude_keys: List[str] = None,
     local_rank: int = 0,
     world_size: int = 1,
     search_depth: int = 6,
@@ -41,6 +42,7 @@ def get_loader(
         ngfs_str=ngfs_str,
         search_depth=search_depth,
         lazy_load=lazy_load,
+        exclude_keys=exclude_keys,
     )
     
     frame_shuffle = mode == 'train'

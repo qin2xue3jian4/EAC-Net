@@ -205,6 +205,7 @@ class Controller(Runner):
         probe_size: int = None,
         num_workers: int = None,
         epoch_size: int = None,
+        exclude_keys: List[str] = None,
     ):
         ngfs_str = self.args.ngfs if hasattr(self.args, 'ngfs') else None
         loader = get_loader(
@@ -228,6 +229,7 @@ class Controller(Runner):
             search_depth=self.args.search_depth,
             lazy_load=self.cfg.data.lazy_load,
             base_seed=self.cfg.seed,
+            exclude_keys=exclude_keys,
         )
         return loader
     
