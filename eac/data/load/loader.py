@@ -43,9 +43,9 @@ class LoaderWrapper:
             sampler=self.sampler,
             num_workers=self.num_workers,
             collate_fn=BatchCollater(self.dataset),
-            pin_memory = True,
-            prefetch_factor = (3 if self.num_workers > 0 else None),
-            persistent_workers = (True if self.num_workers > 0 else False),
+            #pin_memory = False,
+            #prefetch_factor = (3 if self.num_workers > 0 else None),
+            #persistent_workers = (True if self.num_workers > 0 else False),
         )
         
         self.iteration = iter(self.loader)
