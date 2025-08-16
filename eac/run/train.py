@@ -52,6 +52,8 @@ class Trainer(Controller):
                 except:
                     self._log(f'Failed to load state dict {state_key}.', 0, 'ERROR')
         else:
+            if self.method == 'new' and not self.cfg.data.lazy_load:
+                self.module.infos.update(self.loaders['train'].dataset.collect_infos())
             self.start_epoch = 1
             self.train_step = 0
         return

@@ -1,6 +1,7 @@
 import math
 import torch
 import numpy as np
+from collections import defaultdict
 from dataclasses import dataclass
 from typing import List, Union
 from torch.utils.data import Dataset
@@ -124,3 +125,22 @@ class MixDataset(Dataset):
             igroup, iframe, idots = idx
             return self.get_igroup_iframe_idots(igroup, iframe, idots)
         return self.groups[idx]
+    
+    def collect_infos(self):
+        infos = {}
+        for label_name, label in keys.LABELS.items():
+            if self.out_probe and not label.probe:
+                continue
+            num = 0
+            value_sum, value_2sum = 0.0, 0.0
+            for group in self.groups:
+                if label.key not in group.group:
+                    continue
+                num += group.group[label.key].size
+                value_sum += group.group[label.key].sum()
+                value_2sum += np.square(group.group[label.key]).sum()
+            infos[f'{label.key}_mean'] = float(value_sum / num)
+            infos[f'{label.key}_std'] = float(math.sqrt(value_2sum / num - math.pow(value_sum / num, 2)))
+        return infos
+    
+            

@@ -69,6 +69,7 @@ class Label:
     key: str
     simple: str
     progress: str
+    probe: bool
 
 GLOBAL_KEYS = {
     CELL: 'dtype',
@@ -77,9 +78,9 @@ GLOBAL_KEYS = {
 }
 
 LABELS = {
-    ENERGY: Label(GLOBAL, ENERGY, 'e', 'potential'),
-    FORCE: Label(ATOM, FORCE, 'f', 'force'),
-    VIRIAL: Label(GLOBAL, VIRIAL, 'v', 'virial'),
-    CHARGE: Label(PROBE, CHARGE, 'c', 'chg'),
-    CHARGE_DIFF: Label(PROBE, CHARGE_DIFF, 'd', 'chgdiff'),
+    ENERGY: Label(GLOBAL, ENERGY, 'e', 'potential', False),
+    FORCE: Label(ATOM, FORCE, 'f', 'force', False),
+    VIRIAL: Label(GLOBAL, VIRIAL, 'v', 'virial', False),
+    CHARGE: Label(PROBE, CHARGE, 'c', 'chg', True),
+    CHARGE_DIFF: Label(PROBE, CHARGE_DIFF, 'd', 'chgdiff', True),
 }
