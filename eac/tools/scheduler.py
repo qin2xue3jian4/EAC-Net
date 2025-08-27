@@ -2,16 +2,21 @@
 import logging
 from torch import Tensor
 from typing import List
+from omegaconf import DictConfig
 from torch.optim import Optimizer
 from collections import OrderedDict
 
 from .base import SchedulerFactory, Scheduler
 
 class Schedulers:
+    """
+    Scheduler wrapper
+    """
+
     def __init__(
         self,
         optimizer: Optimizer,
-        settings: List,
+        settings: List[DictConfig],
     ):
         self.scheduler_types: List[str] = []
         self.scheduler_list: List[Scheduler] = []
@@ -23,6 +28,8 @@ class Schedulers:
             )
             self.scheduler_list.append(scheduler)
             self.scheduler_types.append(setting.type)
+        
+        # init
         self.scheduler_list[0].start(0)
         self.ptr = 0
     

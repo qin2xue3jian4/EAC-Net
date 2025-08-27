@@ -69,7 +69,7 @@ class CosineScheduler(Scheduler):
     def __init__(
         self,
         optimizer: Optimizer,
-        setting,
+        setting: DictConfig,
     ):
         super().__init__(optimizer, setting)
         self.eta_min = setting.min_lr # minimum learning rate
@@ -128,7 +128,7 @@ class ExpScheduler(Scheduler):
     def __init__(
         self,
         optimizer: Optimizer,
-        setting,
+        setting: DictConfig,
     ):
         super().__init__(optimizer, setting)
         self.freq = setting.freq # update freq
