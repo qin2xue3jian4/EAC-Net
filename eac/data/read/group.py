@@ -61,6 +61,8 @@ class SpaceGroup(BaseGroup):
             out_dict[keys.PROBE_POS] = self.group[keys.PROBE_POS][iframe, iprobes]
         else:
             out_dict[keys.PROBE_POS] = self._get_probe_pos(iframe, iprobes, probe_in_ngfs)
+        out_dict[f'{keys.PROBE}_{keys.IDXS}'] = iprobes
+        out_dict[keys.PROBE_GRID_NGFS] = self.data_ngfs if probe_in_ngfs is None else probe_in_ngfs
         if return_label:
             for key in PROBE_LABELS:
                 if key in self.group:

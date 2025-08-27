@@ -29,12 +29,6 @@ atom:
     feature_smooth: false
     resnet: true
     last_update: true
-# potential:
-#   grad: true
-#   point_neurons:
-#   - 120
-#   - 120
-#   point_active: silu
 probe:
   spin: ${model.spin}
   edge_encoding:
@@ -58,17 +52,17 @@ probe:
     lmax: ${model.lmax}
     feature_length: ${model.feature_length}
     feature_smooth: false
-    resnet: false
+    resnet: true
     last_update: false
   feature_simple:
     drop_probability: 0.0
     neuron: ${model.simple_neurons}
-    cat_keys: []
+    cat_keys:
+    - length
+    - basis
+    - node_attrs
   probe_edge_weight:
     smooth: null
-    #   p: 3
-    #   rcut: ${data.probe_rcut}
-    #   epsilon: ${model.probe.edge_encoding.basis.epsilon}
     method: smooth
     neurons: ${model.edge_weight_neurons}
     active: silu
@@ -77,6 +71,6 @@ probe:
   charge_head:
     neuron: ${model.charge_neurons}
     active: silu
-    bias: True
+    bias: true
     idt: true
     resnet: true

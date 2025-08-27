@@ -13,7 +13,7 @@ def get_loss_func(loss_type: str):
         return diff.square().mean().sqrt()
     def mae_loss(diff: Tensor, label = None):
         return diff.abs().mean()
-    def ratio_loss(diff: Tensor, label: Tensor):
+    def nmae_loss(diff: Tensor, label: Tensor):
         return diff.abs().sum() / (label.abs().sum() + 1E-8)
     if loss_type == 'mse':
         return mse_loss
@@ -21,8 +21,8 @@ def get_loss_func(loss_type: str):
         return rmse_loss
     elif loss_type in ['mae', 'l1', 'abs']:
         return mae_loss
-    elif loss_type in ['ratio', 'rel']:
-        return ratio_loss
+    elif loss_type in ['ratio', 'rel', 'nmae']:
+        return nmae_loss
     return rmse_loss
 
 class MixedLoser(torch.nn.Module):
@@ -76,7 +76,7 @@ class MixedLoser(torch.nn.Module):
             self.sigmas = torch.nn.Parameter(sigmas)
             self.sigmas.requires_grad = True
         else:
-            self.lr = cfg.lr.start_lr if hasattr(cfg, 'lr') else 1.0
+            self.lr = cfg.run.start_lr if hasattr(cfg, 'lr') else 1.0
             self.origin_ws = torch.nn.Parameter(torch.tensor(origin_ws))
             self.origin_ws.requires_grad = False
             self.end_ws = torch.tensor(end_ws)

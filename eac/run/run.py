@@ -4,6 +4,9 @@ import torch
 import psutil
 import logging
 import argparse
+import numpy as np
+from tqdm import tqdm
+from datetime import datetime
 from typing import List, Dict
 from dataclasses import dataclass
 from omegaconf import DictConfig, OmegaConf
@@ -13,9 +16,9 @@ import torch.distributed as dist
 from torch.nn.parallel import DistributedDataParallel as DDP
 
 from ..utils.envs import setup_seed
-from ..data import get_loader, keys
+from ..data import get_loader, keys, LoaderWrapper
 from ..utils.version import SoftwareInfo
-from ..model import get_model, BaseModel
+from ..model import get_model
 
 def graph_to_labels(
     graph: Dict[str, Dict[str, torch.Tensor]],
@@ -42,7 +45,7 @@ class Runner:
         self.dtype = getattr(torch, f'float{self.args.dtype}')
         self.device = None
         if "LOCAL_RANK" in os.environ:
-            self.local_rank = int(os.environ['RANK'])
+            self.local_rank = int(os.environ['LOCAL_RANK'])
             self.world_size = int(os.environ["WORLD_SIZE"])
         else:
             self.local_rank = 0
@@ -52,9 +55,14 @@ class Runner:
         self.ddp_opening = self.world_size > 1
 
         if self.using_cuda:
-            visible_rank = self.local_rank % torch.cuda.device_count()
-            self.device = torch.device(f'cuda:{visible_rank}')
-            self.device_ids = [visible_rank,]
+            if ':' in self.args.device:
+                self.device = torch.device(self.args.device)
+                self.device_ids = [int(self.args.device.split(':')[1]),]
+            else:
+                visible_rank = self.local_rank % torch.cuda.device_count()
+                self.device = torch.device(f'cuda:{visible_rank}')
+                self.device_ids = [visible_rank,]
+            torch.cuda.set_device(self.device)
         else:
             self.device = torch.device('cpu')
             self.device_ids = None
@@ -63,12 +71,12 @@ class Runner:
             backend = 'nccl' if torch.cuda.device_count() >= self.world_size else 'gloo'
             dist.init_process_group(
                 backend=backend,
+                init_method="env://",
                 rank=self.local_rank,
                 world_size=self.world_size
             )
-        
         return
-    
+
     def _log(self, msg: str, level=0, loglevel: str='INFO'):
         if self.local_rank == 0:
             log_level = getattr(logging, loglevel.upper(), logging.INFO)
@@ -81,7 +89,8 @@ class Controller(Runner):
         setup_seed(self.cfg.seed)
         self._print_base_infos()
         self._log(f'Output dir: {self.output_dir}')
-        OmegaConf.save(self.cfg, os.path.join(self.output_dir, 'input.yaml'))
+        datetime_suffix = datetime.now().strftime('%Y%m%d_%H%M%S')
+        OmegaConf.save(self.cfg, os.path.join(self.output_dir, f'input-{datetime_suffix}.yaml'))
         self._load_model()
         self._get_out_type()
         self._log(f'Command argments: {" ".join(sys.argv[1:])}')
@@ -133,11 +142,12 @@ class Controller(Runner):
             method = 'new'
         
         # build
-        self.module = model = get_model(self.cfg)
-        model = model.to(device=self.device, dtype=self.dtype)
+        model = get_model(self.cfg)
+        self.module = model = model.to(device=self.device, dtype=self.dtype)
         if restored:
             finetune = hasattr(self.args, 'finetune') and self.args.finetune
-            msgs = model.safely_load_state_dict(state_dict['model_state'], finetune)
+            model_state = state_dict.get('ema', state_dict['model_state'])
+            msgs = model.safely_load_state_dict(model_state, finetune)
             for msg in msgs:
                 self._log(msg, 1, loglevel='warn')
         
@@ -149,6 +159,7 @@ class Controller(Runner):
             except:
                 state_dict = torch.load(checkpoint, map_location='cpu', weights_only=False)
             model.load_state_dict(state_dict['model_state'])
+            self._log(f'Resuming model from checkpoint: {checkpoint}', 1)
             method = 'checkpoint'
         
         if hasattr(model, 'atom_env_irreps'):
@@ -158,7 +169,8 @@ class Controller(Runner):
         class_str = type(model)
         self._log(f'class of model is {class_str}', 1)
         
-        self.state_dict = state_dict
+        if method != 'new':
+            self.state_dict = state_dict
         self.method = method
         self._log(f'Model is built.')
         
@@ -194,8 +206,9 @@ class Controller(Runner):
         probe_size: int = None,
         num_workers: int = None,
         epoch_size: int = None,
+        exclude_keys: List[str] = None,
     ):
-        predict_ngfs = self.ngfs if hasattr(self, 'ngfs') else None
+        ngfs_str = self.args.ngfs if hasattr(self.args, 'ngfs') else None
         loader = get_loader(
             paths,
             self.args.mode,
@@ -211,12 +224,13 @@ class Controller(Runner):
             epoch_size=epoch_size,
             dtype=self.dtype,
             device=self.device,
-            predict_ngfs=predict_ngfs,
+            ngfs_str=ngfs_str,
             local_rank=self.local_rank,
             world_size=self.world_size,
             search_depth=self.args.search_depth,
             lazy_load=self.cfg.data.lazy_load,
             base_seed=self.cfg.seed,
+            exclude_keys=exclude_keys,
         )
         return loader
     
@@ -224,4 +238,157 @@ class Controller(Runner):
         if hasattr(self, 'out_type'):
             func = getattr(self, f'run_{self.out_type}')
             func()
+        if self.ddp_opening:
+            dist.destroy_process_group()
         return
+
+    def inference_single_data(
+        self,
+        data: Dict[str, Dict[str, torch.Tensor]],
+        result: Dict[str, torch.Tensor],
+        atom_representations: torch.Tensor,
+        space_keys: List[str],
+        need_label: bool
+    ):
+        nprobe = data[keys.PROBE][keys.POS].shape[0]
+        ngfs = data[keys.GLOBAL][keys.PROBE_GRID_NGFS][0].detach().cpu().numpy().astype(int)
+
+        if atom_representations is not None:
+            data[keys.ATOM][keys.FEATURES] = atom_representations
+        
+        probe_empty = data[keys.PROBE_EDGE_KEY][keys.INDEX].numel() == 0
+        if probe_empty:
+            preds = {}
+            for key in space_keys:
+                preds[key] = torch.zeros((nprobe,), dtype=self.dtype, device=self.device)
+        else:
+            preds = self.model(data, out_type=self.out_type, return_atom_features=True)
+            if atom_representations is None:
+                atom_representations = preds[keys.ATOM_FEATURES]
+        
+        # record preds, labels and grid idxs
+        idxs = data[keys.PROBE][keys.IDXS]
+        result['index'][idxs] += 1.0
+        result[keys.PROBE_POS][idxs] = data[keys.PROBE][keys.POS]
+        for key in preds:
+            if key not in keys.LABELS:
+                continue
+            result[f'pred_{key}'][idxs] = preds[key].detach()
+        if need_label:
+            labels = graph_to_labels(data, preds.keys())
+            for key in labels:
+                result[f'label_{key}'][idxs] = labels[key].detach()
+        grid_ptr = data[keys.PROBE][keys.IDXS][0]
+        
+        # record node contribution
+        if 'atom_contributions' in result and not probe_empty:
+            edge = data[keys.PROBE_EDGE_KEY]
+            atom_index, probe_index = edge[keys.INDEX]
+            grid_edge_scalar = edge[keys.CHARGE].detach()
+            linear_indices = (atom_index * np.prod(ngfs) + probe_index + grid_ptr)
+            expanded_indices = linear_indices.unsqueeze(-1).expand(-1, self.spin)
+            flat_charge = torch.zeros_like(result['atom_contributions'])
+            flat_charge.scatter_add_(0, expanded_indices, grid_edge_scalar)
+            result['atom_contributions'] += flat_charge
+        
+        return result, atom_representations
+    
+    def inference_probe_loader(
+        self,
+        loader: LoaderWrapper,
+        need_contribute: bool = False,
+        need_label: bool = False,
+    ):
+        def sync_records(result: Dict[str, torch.Tensor]):
+            if self.ddp_opening:
+                for k, v in result.items():
+                    v = v.contiguous()
+                    dist.all_reduce(v)
+            result['index'] = result['index'] > 0.5
+            if self.local_rank == 0 and not torch.all(result['index']):
+                old_result = result
+                result = {}
+                for key, value in old_result.items():
+                    if key in ['index', 'atom_contributions']:
+                        result[key] = value
+                    else:
+                        result[key] = value[result['index']]
+            return result
+
+        def init_result(igroup: int, iframe: int):
+            nprobe = loader.dataset.nprobes[igroup]
+            result = {
+                'index': torch.zeros(nprobe, dtype=self.dtype, device=self.device),
+                keys.PROBE_POS: torch.zeros((nprobe, 3), dtype=self.dtype, device=self.device)
+            }
+            for return_key in (['label', 'pred'] if need_label else ['pred']):
+                for space_key in space_keys:
+                    result[f'{return_key}_{space_key}'] = torch.zeros(nprobe, dtype=self.dtype, device=self.device)
+            if need_contribute:
+                natom = loader.dataset.groups[igroup].group[keys.ATOM_POS].shape[1]
+                ngfs = loader.dataset.predict_ngfs[igroup]
+                result['atom_contributions'] = torch.zeros((natom*np.prod(ngfs), self.spin), dtype=self.dtype, device=self.device)
+            return result
+        
+        def update_tqdm(msg: str):
+            pbar.clear()
+            self._log(f'Processing {msg}')
+            pbar.refresh()
+        assert loader.frame_size == 1, "Only support frame_size == 1"
+
+        space_keys = [keys.CHARGE]
+        if self.spin == 2:
+            space_keys.append(keys.CHARGE_DIFF)
+        
+        data = None
+        pbar = tqdm(total=len(loader), desc="Processing", position=0)
+        last_file = None
+        ngroup = len(loader.dataset.group_keys)
+        
+        for igroup, group_key in enumerate(loader.dataset.group_keys):
+            for iframe in range(loader.dataset.nframes[igroup]):
+
+                working_frame_id = f'{group_key}|{iframe}'
+                result = init_result(igroup, iframe)
+                atom_representations = None
+                filename = group_key.split('|')[0]
+                
+                if self.args.loglevel == 'file' and (last_file is None or last_file != filename):
+                    update_tqdm(filename)
+                    last_file = filename
+                elif self.args.loglevel == 'group' and iframe == 0:
+                    update_tqdm(group_key)
+                elif self.args.loglevel == 'frame':
+                    update_tqdm(working_frame_id)
+                elif igroup % int(self.args.loglevel) == 0:
+                    update_tqdm(f'Groups:{igroup}-{igroup+int(self.args.loglevel)}/{ngroup}, file: {filename}')
+                
+                while True:
+                    if data is None:
+                        try:
+                            data = next(loader)
+                            pbar.update(1)
+                        except StopIteration:
+                            break
+                    if data[keys.GLOBAL][keys.FRAME_ID][0] != working_frame_id:
+                        break
+                    
+                    result, atom_representations = self.inference_single_data(data, result, atom_representations, space_keys, need_label)
+                    data = None
+
+                synced_result = sync_records(result)
+                if self.local_rank == 0:
+                    yield working_frame_id, igroup, iframe, synced_result
+        
+        pbar.close()
+        return
+    
+    def generate_filename(self, frame_id: str, istructure: int):
+        input_file, group_key, iframe = frame_id.split('|')
+        output_filename = self.args.output_fmt.format(
+            filename=os.path.basename(input_file).split('.')[0],
+            groupkey=group_key,
+            iframe=iframe,
+            istructure=istructure,
+        )
+        return output_filename

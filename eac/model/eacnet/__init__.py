@@ -42,7 +42,7 @@ class EACMixModel(BaseModel):
                 **potential,
                 atom_env_irreps=self.atom_env_irreps
             )
-    
+        
     def forward(
         self,
         data: Dict[str, Dict[str, torch.Tensor]],
@@ -66,6 +66,10 @@ class EACMixModel(BaseModel):
         
         if run_potential:
             self.potential_nets(data)
+        
+        for pred_key, pred_label in keys.LABELS.items():
+            if pred_label.key in data[pred_label.parent] and f'{pred_label.key}_std' in self.infos:
+                data[pred_label.parent][pred_label.key] = data[pred_label.parent][pred_label.key] * self.infos[f'{pred_label.key}_std'] + self.infos[f'{pred_label.key}_mean']
         
         if return_pred_dict:
             for pred_key, pred_label in keys.LABELS.items():

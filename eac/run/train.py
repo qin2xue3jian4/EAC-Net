@@ -1,3 +1,4 @@
+import os
 import torch
 import numpy as np
 from typing import Dict
@@ -6,11 +7,10 @@ from collections import (
 )
 import torch.nn.utils as nn_utils
 
+from ..tools import EMA, get_optimizer, Schedulers, MixedLoser
 from .record import Recorder
 from ..data.load import LoaderWrapper
-from ..losses.loss import MixedLoser
 from .run import Controller, graph_to_labels
-from ..schedulers.scheduler import Schedulers
 
 class Trainer(Controller):
     def __post_init__(self):
@@ -22,35 +22,37 @@ class Trainer(Controller):
             self.args,
             self.cfg
         )
-        trainable_params = [p for p in self.module.parameters() if p.requires_grad]
-        self.optimizer = torch.optim.Adam(
-            trainable_params,
-            lr=self.cfg.lr.start_lr,
-        )
+        self.optimizer = get_optimizer(self.module, self.cfg)
+        self.ema = EMA(self.module, self.cfg.run.ema_decay)
         self.scheduler = Schedulers(
             self.optimizer,
-            self.cfg.lr.schedulers
+            self.cfg.run.schedulers
         )
         self.losser = MixedLoser(
             self.cfg,
             device=self.device,
             out_type=self.out_type
         )
-        
+        self.break_train = False
         self.load_state()
     
     def load_state(self):
         if self.method == 'checkpoint':
             for state_key, state_value in self.state_dict.items():
-                if state_key in ['optimizer', 'scheduler', 'losser', 'recorder']:
-                    getattr(self, state_key).load_state_dict(state_value)
-                elif state_key in ['start_epoch', 'train_step']:
-                    setattr(self, state_key, state_value)
-                elif state_key == 'loaders':
-                    for flow, loader in self.loaders.items():
-                        assert flow in state_value
-                        loader.load_state_dict(state_value[flow])
+                try:
+                    if state_key in ['optimizer', 'scheduler', 'losser', 'recorder', 'ema']:
+                        getattr(self, state_key).load_state_dict(state_value)
+                    elif state_key in ['start_epoch', 'train_step']:
+                        setattr(self, state_key, state_value)
+                    elif state_key == 'loaders':
+                        for flow, loader in self.loaders.items():
+                            assert flow in state_value
+                            loader.load_state_dict(state_value[flow])
+                except:
+                    self._log(f'Failed to load state dict {state_key}.', 0, 'ERROR')
         else:
+            if self.method == 'new' and not self.cfg.data.lazy_load:
+                self.module.infos.update(self.loaders['train'].dataset.collect_infos())
             self.start_epoch = 1
             self.train_step = 0
         return
@@ -58,8 +60,17 @@ class Trainer(Controller):
     def get_loaders(self):
         self._log('Loading datasets.')
         self.loaders: Dict[str, LoaderWrapper] = {}
+        if self.cfg.data.exclude_keys is None:
+            exclude_keys = None
+        elif isinstance(self.cfg.data.exclude_keys, str):
+            assert os.path.exists(self.cfg.data.exclude_keys)
+            with open(self.cfg.data.exclude_keys) as f:
+                exclude_keys = [line.strip() for line in f.readlines()]
+        else:
+            assert isinstance(self.cfg.data.exclude_keys, list)
+            exclude_keys = self.cfg.data.exclude_keys
         for flow in ['train', 'valid', 'test']:
-            if flow not in self.cfg.data:
+            if flow not in self.cfg.data or self.cfg.data[flow] is None:
                 continue
             frame_size = self.args.frame_size or self.cfg.data[flow].frame_size
             probe_size = self.args.probe_size or self.cfg.data[flow].probe_size
@@ -74,6 +85,7 @@ class Trainer(Controller):
                 probe_size=probe_size,
                 num_workers=num_workers,
                 epoch_size=epoch_size,
+                exclude_keys=exclude_keys,
             )
             nfile = len(loader.dataset.readers)
             ngroup = len(loader.dataset.groups)
@@ -93,9 +105,13 @@ class Trainer(Controller):
             self.model.train()
             self.evaluate(epoch=epoch, flow_type='train')
             self.model.eval()
+            self.ema.apply(self.module)
             self.evaluate(epoch=epoch, flow_type='valid')
             if 'test' in self.flows:
                 self.evaluate(epoch=epoch, flow_type='test')
+            self.ema.restore(self.module)
+            if self.break_train:
+                break
         return
     
     @property
@@ -122,9 +138,10 @@ class Trainer(Controller):
                 if flow_type == 'train':
                     self.optimizer.zero_grad(set_to_none=True)
                     loss.backward()
-                    if self.cfg['grad_max_norm'] is not None:
-                        nn_utils.clip_grad_norm_(self.model.parameters(), self.cfg['grad_max_norm'])
+                    if self.cfg.run.grad_max_norm is not None:
+                        nn_utils.clip_grad_norm_(self.model.parameters(), self.cfg.run.grad_max_norm)
                     self.optimizer.step()
+                    self.ema.update(self.module)
                     self.train_step += 1
                 
                 losses['loss'].append(loss.item())
@@ -133,6 +150,8 @@ class Trainer(Controller):
         
         if flow_type == 'valid':
             epoch_mean_loss = np.mean(losses['loss'])
+            next_ema_decay = 0.5 + 0.5 * np.exp(1-np.exp(min(epoch_mean_loss, 1.0)))
+            self.ema.decay = next_ema_decay
             scheduler_change = self.scheduler.step(epoch, epoch_mean_loss)
             if scheduler_change:
                 self._log(f'Scheduler changed to {self.scheduler.now_type}')

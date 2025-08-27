@@ -7,6 +7,7 @@ BATCH = 'batch'
 CELL = 'cell'
 POS = 'pos'
 TYPE = 'type'
+IDXS = 'idxs'
 ATTR = 'attrs'
 FEATURES = 'features'
 FRAME_ID = 'frame_id'
@@ -68,11 +69,18 @@ class Label:
     key: str
     simple: str
     progress: str
+    probe: bool
+
+GLOBAL_KEYS = {
+    CELL: 'dtype',
+    PROBE_GRID_NGFS: 'long',
+    FRAME_ID: 'origin',
+}
 
 LABELS = {
-    ENERGY: Label(GLOBAL, ENERGY, 'e', 'potential'),
-    FORCE: Label(ATOM, FORCE, 'f', 'force'),
-    VIRIAL: Label(GLOBAL, VIRIAL, 'v', 'virial'),
-    CHARGE: Label(PROBE, CHARGE, 'c', 'chg'),
-    CHARGE_DIFF: Label(PROBE, CHARGE_DIFF, 'd', 'chgdiff'),
+    ENERGY: Label(GLOBAL, ENERGY, 'e', 'potential', False),
+    FORCE: Label(ATOM, FORCE, 'f', 'force', False),
+    VIRIAL: Label(GLOBAL, VIRIAL, 'v', 'virial', False),
+    CHARGE: Label(PROBE, CHARGE, 'c', 'chg', True),
+    CHARGE_DIFF: Label(PROBE, CHARGE_DIFF, 'd', 'chgdiff', True),
 }

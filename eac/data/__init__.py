@@ -20,37 +20,43 @@ def get_loader(
     epoch_size: int = 100,
     dtype: torch.dtype = torch.float32,
     device: torch.device = torch.device('cpu'),
-    predict_ngfs: np.ndarray = None,
+    ngfs_str: str = None,
+    exclude_keys: List[str] = None,
     local_rank: int = 0,
     world_size: int = 1,
     search_depth: int = 6,
     lazy_load: bool = False,
     base_seed: int = 0,
 ):
+    out_probe = out_type != 'potential'
     dataset = MixDataset(
         paths,
         mode=mode,
-        out_type=out_type,
+        out_probe=out_probe,
         root_dir=root_dir,
-        probe_size=probe_size,
         atom_cutoff=atom_rcut,
         atom_sel=atom_sel,
         probe_cutoff=probe_rcut,
         probe_sel=probe_sel,
         dtype=dtype,
-        predict_ngfs=predict_ngfs,
+        ngfs_str=ngfs_str,
         search_depth=search_depth,
         lazy_load=lazy_load,
-        base_seed=base_seed,
+        exclude_keys=exclude_keys,
     )
     
-    shuffle = mode == 'train'
+    frame_shuffle = mode == 'train'
+    probe_shuffle = (mode == 'train' or (mode == 'test' and epoch_size != -1))
+
     loader = LoaderWrapper(
         dataset,
         frame_size=frame_size,
         num_workers=num_workers,
-        shuffle=shuffle,
         epoch_size=epoch_size,
+        probe_size=probe_size,
+        frame_shuffle=frame_shuffle,
+        probe_shuffle=probe_shuffle,
+        base_seed=base_seed,
         device=device,
         local_rank=local_rank,
         world_size=world_size,

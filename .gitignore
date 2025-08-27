@@ -1,7 +1,6 @@
 # For EAC-Net Project
 *.lock
 outputs/
-examples/
 debug/
 charge3net/
 

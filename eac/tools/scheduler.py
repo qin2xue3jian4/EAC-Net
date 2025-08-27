@@ -2,16 +2,21 @@
 import logging
 from torch import Tensor
 from typing import List
+from omegaconf import DictConfig
 from torch.optim import Optimizer
 from collections import OrderedDict
 
 from .base import SchedulerFactory, Scheduler
 
 class Schedulers:
+    """
+    Scheduler wrapper
+    """
+
     def __init__(
         self,
         optimizer: Optimizer,
-        settings: List,
+        settings: List[DictConfig],
     ):
         self.scheduler_types: List[str] = []
         self.scheduler_list: List[Scheduler] = []
@@ -23,6 +28,8 @@ class Schedulers:
             )
             self.scheduler_list.append(scheduler)
             self.scheduler_types.append(setting.type)
+        
+        # init
         self.scheduler_list[0].start(0)
         self.ptr = 0
     
@@ -53,6 +60,8 @@ class Schedulers:
     def load_state_dict(self, state_dict: OrderedDict[str, Tensor]):
         self.ptr = state_dict['ptr']
         for i, scheduler in enumerate(self.scheduler_list):
+            if f'scheduler_{i}' not in state_dict:
+                continue
             this_state = state_dict[f'scheduler_{i}']
             scheduler.load_state_dict(this_state)
         return None

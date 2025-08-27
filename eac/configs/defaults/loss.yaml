@@ -1,6 +1,6 @@
 loss:
   probe_loss_func: mae
-  probe_item_func: ratio
+  probe_item_func: nmae
   spin_type: sumdiff
   charge_weight_start: 1.0
   charge_weight_end: 1.0
