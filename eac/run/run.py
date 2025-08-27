@@ -6,6 +6,7 @@ import logging
 import argparse
 import numpy as np
 from tqdm import tqdm
+from datetime import datetime
 from typing import List, Dict, Union
 from dataclasses import dataclass
 from collections import defaultdict
@@ -89,7 +90,8 @@ class Controller(Runner):
         setup_seed(self.cfg.seed)
         self._print_base_infos()
         self._log(f'Output dir: {self.output_dir}')
-        OmegaConf.save(self.cfg, os.path.join(self.output_dir, 'input.yaml'))
+        datetime_suffix = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
+        OmegaConf.save(self.cfg, os.path.join(self.output_dir, f'input-{datetime_suffix}.yaml'))
         self._load_model()
         self._get_out_type()
         self._log(f'Command argments: {" ".join(sys.argv[1:])}')
