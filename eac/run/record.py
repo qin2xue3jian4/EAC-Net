@@ -2,6 +2,7 @@ import os
 import time
 import torch
 import random
+import shutil
 import functools
 import numpy as np
 from typing import List, Dict
@@ -20,8 +21,6 @@ except ImportError:
 
 from .run import Runner
 from ..data import keys
-from ..utils.envs import file_backups
-
 
 flow_simply = {
     'train': 'trn',
@@ -50,6 +49,17 @@ def mean_step(data:np.array, margin=5):
         sum_data += long_data[margin+istep:margin+istep+bsz]
     mean_data = sum_data / (2*margin+1)
     return mean_data
+
+def file_backups(file: str):
+    n = 1
+    while True:
+        bak_name = f'{file}.bak.{n}'
+        if os.path.exists(bak_name):
+            n += 1
+            continue
+        shutil.move(file, bak_name)
+        break
+    return
 
 class Recorder(Runner):
     def __post_init__(self):
