@@ -12,7 +12,7 @@ from ..data.write import Writer
 class Tester(Controller):
     def __post_init__(self):
         super().__post_init__()
-        self.cfg.loss.space_spin_type = 'all'
+        # self.cfg.loss.spin_type = 'all'
         self.losser = MixedLoser(self.cfg, self.device, self.out_type)
         frame_size = 1 if self.out_type == 'probe' or self.args.frame_size is None else self.args.frame_size
         probe_size = self.args.probe_size or 50

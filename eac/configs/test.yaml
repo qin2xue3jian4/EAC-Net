@@ -1,5 +1,6 @@
 defaults:
   - hydra: default
+  - defaults/loss@_here_
   - defaults/data@_here_
   - _self_
 
@@ -7,12 +8,13 @@ mode: test
 seed: 20
 
 loss:
-  space_loss_func: mae
-  space_item_func: ratio
-  space_spin_type: sumdiff
-  space_scalar_weight_start: 1.0
-  space_scalar_weight_end: 1.0
-  space_scalar_diff_weight_start: 100.0
-  space_scalar_diff_weight_end: 1.0
-  multy_weight_method: null
-  space_negative_loss: false
+  spin_type: all
+#   space_loss_func: mae
+#   space_item_func: ratio
+#   space_spin_type: sumdiff
+#   space_scalar_weight_start: 1.0
+#   space_scalar_weight_end: 1.0
+#   space_scalar_diff_weight_start: 100.0
+#   space_scalar_diff_weight_end: 1.0
+#   multy_weight_method: null
+#   space_negative_loss: false
