@@ -188,8 +188,12 @@ class Recorder(Runner):
         if hasattr(self, 'lcurve_f'):
             self.lcurve_f.close()
         final_file = os.path.join(self.model_path, f'{self.cfg.record.save_prefix}.{self.cfg.record.save_suffix}')
+        
+        if hasattr(trainer, 'ema'):
+            trainer.ema.apply(trainer.module)
+        
         model_state = {
-            'model_state': trainer.ema.shadow if hasattr(trainer, 'ema') else trainer.module.state_dict(),
+            'model_state': trainer.module.state_dict(),
             'settings': OmegaConf.to_container(self.cfg, resolve=True),
         }
         torch.save(model_state, final_file)
