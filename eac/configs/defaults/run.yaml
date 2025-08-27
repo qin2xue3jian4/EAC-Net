@@ -1,23 +1,12 @@
 run:
   optim_type: adam
-  start_lr: 0.003
+  start_lr: 3.0e-3
   weight_decay: 0.0
   ema_decay: 0.99
+  grad_max_norm: null
   schedulers:
-  - type: stable
-    nepoch: 300
   - type: exp
     nepoch: 1000
-    end_lr: 0.0003
-    freq: 10
-    rate: null
-  - type: exp
-    nepoch: 700
-    end_lr: 2.0e-05
-    freq: 10
-    rate: null
-  - type: exp
-    nepoch: 1000
-    end_lr: 1.0e-05
+    end_lr: 3.0e-4
     freq: 10
     rate: null

@@ -1,9 +1,5 @@
 import os
-import tqdm
-import torch
-from tqdm import tqdm
 import numpy as np
-from collections import defaultdict
 
 from .run import Controller
 from ..data import keys
@@ -13,9 +9,9 @@ class Predictor(Controller):
     def __post_init__(self):
         super().__post_init__()
         frame_size = 1 if self.out_type == 'probe' or self.args.frame_size is None else self.args.frame_size
-        probe_size = self.args.probe_size or 50
+        probe_size = self.args.probe_size or (50 if self.device.type == 'cpu' else 200)
         epoch_size = -1
-        num_workers = self.args.num_workers or 0
+        num_workers = self.args.num_workers or min(max(os.cpu_count()//3, 5), 0)
         self.loader = self._load_paths_data(
             self.args.paths,
             frame_size=frame_size,
