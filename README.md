@@ -42,12 +42,25 @@ An open-source code for predicting atomic contributions charge density using Equ
 
 ## Installation
 
+Since `EAC-Net` relies on libraries such as `torch_cluster`, to correctly install the `cuda` version for GPU training support, we recommend using `poetry` for installation.
+
+```bash
+pip install poetry
+```
+
+Alternatively, before running `pip install .`, please ensure that the `CUDA` versions of `torch`, `torch_cluster`, and `torch_scatter` libraries are installed. `torch_cluster` and `torch_scatter` can be found in their corresponding CUDA versions at [pytorch geometric](https://pytorch-geometric.com/whl).
+
+
 ```bash
 # Clone the repository
 git clone https://github.com/qin2xue3jian4/EAC-Net
 cd EAC-Net
 
-# Install the package
+# Install the package with poetry and activate Environment
+poetry install
+eval $(poetry env activate)
+
+# Or run the installation command after installing libraries such as torch
 pip install .
 ```
 

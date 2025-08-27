@@ -42,12 +42,24 @@
 
 ## 安装
 
+由于 `EAC-Net` 依赖`torch_cluster`等库，为了正确安装`cuda`版本以支持GPU训练，我们推荐使用`poetry`进行安装。
+
+```bash
+pip install poetry
+```
+
+或者在运行`pip install .` 前，请确保已安装CUDA版本的`torch`, `torch_cluster`, `torch_scatter`库。`torch_cluster`, `torch_scatter`可以在[pytorch geometric](https://pytorch-geometric.com/whl)找到对应的cuda版本。
+
 ```bash
 # 克隆存储库
 git clone https://github.com/qin2xue3jian4/EAC-Net
 cd EAC-Net
 
-# 安装软件包
+# 使用poetry安装并激活环境
+poetry install
+eval $(poetry env activate)
+
+# 或者在安装torch等库后运行安装命令
 pip install .
 ```
 
