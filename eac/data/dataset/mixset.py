@@ -47,7 +47,7 @@ class MixDataset(Dataset):
             for group_key, group in zip(reader.group_keys, reader.groups):
                 if self.exclude_keys is not None and group_key in self.exclude_keys:
                     continue
-                final = f'{file_path}:{group_key}'
+                final = f'{file_path}|{group_key}'
                 self.group_keys.append(final)
                 self.groups.append(group)
                 self.nframes.append(group.nframe)
@@ -114,7 +114,7 @@ class MixDataset(Dataset):
             dtype=self.dtype,
         )
         herodata[keys.GLOBAL][keys.INFOS] = self.groups[igroup].extro_infos
-        herodata[keys.GLOBAL][keys.FRAME_ID] = f'{self.group_keys[igroup]}:{iframe}'
+        herodata[keys.GLOBAL][keys.FRAME_ID] = f'{self.group_keys[igroup]}|{iframe}'
         return herodata
     
     def __len__(self):

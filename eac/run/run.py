@@ -349,10 +349,10 @@ class Controller(Runner):
         for igroup, group_key in enumerate(loader.dataset.group_keys):
             for iframe in range(loader.dataset.nframes[igroup]):
 
-                working_frame_id = f'{group_key}:{iframe}'
+                working_frame_id = f'{group_key}|{iframe}'
                 result = init_result(igroup, iframe)
                 atom_representations = None
-                filename = group_key.split(':')[0]
+                filename = group_key.split('|')[0]
                 
                 if self.args.loglevel == 'file' and (last_file is None or last_file != filename):
                     update_tqdm(filename)
@@ -385,7 +385,7 @@ class Controller(Runner):
         return
     
     def generate_filename(self, frame_id: str, istructure: int):
-        input_file, group_key, iframe = frame_id.split(':')
+        input_file, group_key, iframe = frame_id.split('|')
         output_filename = self.args.output_fmt.format(
             filename=os.path.basename(input_file).split('.')[0],
             groupkey=group_key,

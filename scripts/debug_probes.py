@@ -48,7 +48,7 @@ def collect_data(dataset, collater, idots: np.ndarray, iframe: int=0, igroup: in
     else:
         igrids = idots
     out_data = dataset.get_igroup_iframe_idots(igroup, iframe, igrids)
-    out_data[keys.FRAME_ID] = f'{dataset.group_keys[igroup]}:{iframe}'
+    out_data[keys.FRAME_ID] = f'{dataset.group_keys[igroup]}|{iframe}'
     batch = [out_data]
     data = collater(batch)
     newdata = {}
