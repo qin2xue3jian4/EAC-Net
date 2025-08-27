@@ -1,0 +1,54 @@
+nepoch: 500
+seed: 20250827
+record:
+  loss_xscale: log
+  save_freq: 200
+data:
+  atom_rcut: 4.0
+  atom_sel: 100
+  probe_rcut: 6.0
+  probe_sel: 300
+  root_dir: examples/water/data
+  train:
+    epoch_size: 10
+    frame_size: 2
+    num_workers: 0
+    paths:
+    - '[0-6]*.h5'
+    probe_size: 40
+  valid:
+    epoch_size: 5
+    frame_size: 2
+    num_workers: 05
+    paths:
+    - '[7-8].h5'
+    probe_size: 40
+run:
+  schedulers:
+  - type: exp
+    nepoch: 500
+    end_lr: 3.0e-4
+    freq: 10
+  optim_type: Lamb
+  weight_decay: 0.003
+  start_lr: 1.0e-3
+  ema_decay: 0.99
+  grad_max_norm: 1.0
+model:
+  lmax: 3
+  feature_length: 20
+  num_atom_layers: 3
+  num_basis: 8
+  num_probe_layers: 2
+  atom_invariant_neurons:
+  - 128
+  charge_neurons:
+  - 128
+  edge_weight_neurons:
+  - 128
+  probe_invariant_neurons:
+  - 128
+  simple_neurons:
+  - 128
+  - 24
+  spin: false
