@@ -32,6 +32,7 @@ dpdata = "==0.2.23"
 ase = "==3.24.0"
 torch-geometric = "==2.6.1"
 pymatgen = "==2025.1.9"
+torch_optimizer = "==0.3.0"
 torch_cluster = { version = "1.6.3", source = "pyg" }
 torch_scatter = { version = "2.1.2", source = "pyg" }
 

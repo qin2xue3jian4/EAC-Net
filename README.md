@@ -1,15 +1,44 @@
+<div align="right">
+
+English | [中文](docs/README_ZH-CN.md)
+
+</div>
+
 # EAC-Net
+
 ![Model Structure](docs/imgs/model.png)
+
 An open-source code for predicting atomic contributions charge density using Equivariant Message Passing Networks.
 
-## Features
-- Higher accuracy and faster training and inference speed
-- Outputting the charge density distribution of a single atom
-- Support caching atomic local environment during inference phase to accelerate inference speed
-- Support CHGCAR/H5 dataset format
-- Support multi GPUs parallel training
+## Contents
+- [EAC-Net](#eac-net)
+  - [Contents](#contents)
+  - [Features](#features)
+  - [Installation](#installation)
+  - [Quickstart](#quickstart)
+    - [Pre-install (development)](#pre-install-development)
+    - [Post-install (CLI)](#post-install-cli)
+    - [Distributed Training with torchrun](#distributed-training-with-torchrun)
+  - [Modes \& Arguments](#modes--arguments)
+  - [Datasets](#datasets)
+  - [Usage Examples](#usage-examples)
+    - [Training the Model](#training-the-model)
+    - [Testing the Model](#testing-the-model)
+    - [Making Predictions](#making-predictions)
+  - [Citation](#citation)
+  - [License](#license)
 
-## Citation
+## Features
+
+- Higher accuracy and faster training and inference speed
+
+- Outputting the charge density distribution of a single atom
+
+- Support caching atomic local environment during inference phase to accelerate inference speed
+
+- Support CHGCAR/H5 dataset format
+
+- Support multi GPUs parallel training
 
 ## Installation
 
@@ -68,6 +97,7 @@ eac train -h
 ---
 
 ## Datasets
+
 Although `EAC` supports the direct use of `CHGCAR` as a dataset, for efficiency, we recommend converting the data into an `h5` format dataset before training.
 
 For conversion commands, please refer to:
@@ -78,6 +108,71 @@ In addition, considering the particularity of the charge density dataset, `EAC` 
 
 For more parameters and methods for screening samples, please read the `scripts/convert_dir.py` directly.
 
+## Usage Examples
+
+The following examples demonstrate how to use `EAC-Net` for charge density modeling of water molecular systems.
+
+### Training the Model
+```bash
+eac train examples/water/input.yaml --out outputs/train --plot
+```
+
+During training, the program will automatically:
+- Read training data specified in the input.yaml configuration file, automatically combining `data.root_dir` and `data.train.paths`, supporting wildcard patterns for convenient file path setup
+
+- Save training logs and model files in the `outputs/train` directory
+
+- Display training progress and loss function changes
+
+To stop training prematurely, create a file named stop in the output directory, and the program will automatically terminate the training process.
+
+### Testing the Model
+
+After training is completed, use the following command to evaluate the model's performance on the validation set:
+```bash
+eac test --model outputs/train/models/model.pt --paths examples/water/data/8.h5 --paths examples/water/data/8.h5 --out outputs/test --plot
+```
+
+This command will:
+- Load the trained model (`outputs/train/models/model.pt`)
+
+- Test on the specified datasets (multiple datasets can be specified via the `--paths` parameter)
+
+- Output test metrics (such as `MSE`, `MAE`, etc.)
+
+- Generate diagonal comparison plots between predicted and actual results when the --plot parameter is set
+
+### Making Predictions
+
+Use the trained model to predict charge density for new structures:
+```bash
+eac predict --model outputs/train/models/model.pt --paths examples/water/POSCAR --out outputs/predict --num-workers 4 --ngfs 50*50*50 --probe-size 200
+```
+
+The prediction function supports:
+- Input structure files in various formats including `POSCAR`, `h5`, `CHGCAR`, etc.
+
+- Output charge density files in formats such as `CHGCAR`, `h5`, etc.
+
+- Setting prediction grid size via the `--ngfs` parameter. For input files containing grid information (such as `h5`, `CHGCAR`), the program will automatically extract grid size from the structure files when `--ngfs` is not specified
+
+- Configuring parallel prediction grid point quantity via the `--probe-size` parameter
+
+
+## Citation
+The preprint describing the `EAC-Net` software framework:
+```
+@misc{xuejian2025eacnetrealspacechargedensity,
+      title={EAC-Net: Real-space charge density via equivariant atomic contributions}, 
+      author={Qin Xuejian and Lv Taoyuze and Zhong Zhicheng},
+      year={2025},
+      eprint={2508.04052},
+      archivePrefix={arXiv},
+      primaryClass={cond-mat.mtrl-sci},
+      url={https://arxiv.org/abs/2508.04052}, 
+}
+```
+
 ## License
 
-MIT © Your Organization
+`EAC-Net` is licensed under the MIT License.
