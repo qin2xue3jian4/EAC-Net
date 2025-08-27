@@ -12,59 +12,6 @@ from ..tools import MixedLoser
 from .run import Controller
 from ..data.write import Writer
 
-def save_3d_picture(
-    points: np.ndarray,
-    scalars: np.ndarray,
-    picture_file: str,
-):
-    import plotly.graph_objects as go
-    
-    fig = go.Figure(data=go.Isosurface(
-        x=points[:,0],
-        y=points[:,1],
-        z=points[:,2],
-        value=scalars.flatten(),
-        isomin=scalars.min(),
-        isomax=scalars.max(),
-        surface_count=30,
-        caps=dict(x_show=False, y_show=False, z_show=False),
-        colorscale='Blackbody_r',
-        colorbar=dict(
-            title='density',
-            thickness=20,
-            len=0.75,
-        ),
-        opacity=0.8,
-        lighting=dict(
-            ambient=0.3,
-            diffuse=0.8,
-            specular=0.5,
-            roughness=0.4
-        ),
-        lightposition=dict(x=100, y=100, z=100)
-    ))
-
-    # layout
-    fig.update_layout(
-        scene=dict(
-            xaxis_title='X (Å)',
-            yaxis_title='Y (Å)',
-            zaxis_title='Z (Å)',
-            aspectmode='data',
-            camera=dict(
-                eye=dict(x=1.5, y=1.5, z=1.5)
-            )
-        ),
-        margin=dict(t=30, l=0, b=0, r=0),
-        width=900,
-        height=700,
-        title='Charge Density'
-    )
-    
-    # save
-    fig.write_html(f'{picture_file}.html', include_plotlyjs=True)
-    return None
-
 class Tester(Controller):
     def __post_init__(self):
         super().__post_init__()
@@ -152,18 +99,6 @@ class Tester(Controller):
             img = os.path.join(self.output_dir, f'test_{key}_{iframe}.png')
             fig.savefig(img)
             plt.close()
-        # 三维图
-        if keys.PROBE not in inputs or self.args.size is not None:
-            return None
-        try:
-            grids = inputs[keys.PROBE].cpu().numpy()
-            for value_type, value_dict in zip(['label', 'pred'], [labels, preds]):
-                for key, value in value_dict.items():
-                    array_value = value.cpu().numpy()
-                    picture = os.path.join(self.output_dir, f'test_{value_type}_{key}_{iframe}')
-                    save_3d_picture(grids, array_value, picture)
-        except:
-            self.logger.error('save 3d picture error')
         return None
     
     def save(self, inputs, labels, preds, iframe):
