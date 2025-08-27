@@ -9,7 +9,8 @@ from .. import keys
 from ..read.group import BaseGroup, SpaceGroup
 
 class Writer:
-    def __init__(self):
+    def __init__(self, save: bool = True):
+        self.save = save
         self.groups = []
         self.group_keys = []
     
@@ -23,9 +24,7 @@ class Writer:
     ):
         npy_group = {}
         for key, value in space_group.group.items():
-            if key in [keys.CHARGE, keys.CHARGE_DIFF]:
-                continue
-            if sample_probe and key in [keys.PROBE_POS]:
+            if key in [keys.CHARGE, keys.CHARGE_DIFF, keys.PROBE_POS]:
                 continue
             npy_group[key] = value
         
@@ -37,8 +36,7 @@ class Writer:
                     for result in predict_results
                 ]).reshape(nframe, -1)
         
-        if keys.PROBE_GRID_SHAPE not in npy_group:
-            npy_group[keys.PROBE_GRID_SHAPE] = np.array([len(predict_results), *ngfs])
+        npy_group[keys.PROBE_GRID_SHAPE] = np.array([len(predict_results), *ngfs])
         
         if sample_probe:
             npy_group[keys.PROBE_POS] = np.vstack([
@@ -51,7 +49,7 @@ class Writer:
             space_group.extro_infos,
         )
         self.groups.append(new_group)
-        group_key = frame_id.split(':')[1]
+        group_key = frame_id.split('|')[1]
         self.group_keys.append(group_key)
     
     def write_to_h5(self, h5_file: str):
@@ -113,6 +111,7 @@ class Writer:
         vcd.write(filename=chgcar_file, format='chgcar')
 
     def write_to_file(self, file: str):
+        if not self.save: return
         if file.endswith('.h5'):
             self.write_to_h5(file)
         elif file.endswith('.chgcar'):

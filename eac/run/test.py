@@ -1,10 +1,7 @@
 import os
-import tqdm
-import time
 import torch
-import numpy as np
+from typing import Dict
 import matplotlib.pyplot as plt
-from collections import defaultdict
 from matplotlib.axes._axes import Axes
 
 from ..data import keys
@@ -40,8 +37,10 @@ class Tester(Controller):
             need_label=True
         )):
             base_filename = self.generate_filename(frame_id, istructure)
+            
             if group_idx == 0:
-                writer = Writer()
+                writer = Writer(self.args.save)
+            
             if iframe == 0:
                 group_idx += 1
                 space_group = self.loader.dataset.groups[igroup]
@@ -50,9 +49,22 @@ class Tester(Controller):
                 nframe = self.loader.dataset.nframes[igroup]
                 frame_results = []
             frame_results.append(result)
+            
             if iframe == nframe - 1:
                 writer.append_result(frame_id, space_group, frame_results, sample_probe=False, ngfs=ngfs)
-
+            
+            # loss
+            label = {key.replace('label_', ''): value for key, value in result.items() if key.startswith('label_')}
+            preds = {key.replace('pred_', ''): value for key, value in result.items() if key.startswith('pred_')}
+            loss, item_loss = self.losser(label, preds)
+            loss_type, item_type = self.cfg.loss.probe_loss_func, self.cfg.loss.probe_item_func
+            item_msg = ', '.join([f'{k}-{item_type}: {v:.3e}' for k,v in item_loss.items()])
+            self._log(f'{frame_id}: loss-{loss_type}: {loss.item():.3e}, {item_msg}.')
+            
+            # plot
+            if self.args.plot:
+                self.plot(label, preds, frame_id)
+            
             ngroup = self.loader.dataset.ngroups[ifile]
             if group_idx >= ngroup:
                 base_filename = self.generate_filename(frame_id, istructure)
@@ -62,24 +74,15 @@ class Tester(Controller):
                 group_idx = 0
         return
 
-    def show_result(self, t1, ii, ll, pp, iframe):
-        t2 = time.time() - t1
-        self._log(f'used time: {t2:.3f}s')
-        for dict_value in [ii, ll, pp]:
-            for key, value in dict_value.items():
-                dict_value[key] = torch.cat(value, dim=0)
-        loss, item_loss = self.losser(ll, pp)
-        self._log(f'loss: {loss.item():.3e}')
-        for key, value in item_loss.items():
-            self._log(f'{key}: {value:.3e}')
-        if self.args.save:
-            self.save(ii, ll, pp, iframe)
-        if self.args.plot:
-            self.plot(ii, ll, pp, iframe)
-    
-    def plot(self, inputs, labels, preds, iframe):
+    def plot(
+        self,
+        label: Dict[str, torch.Tensor],
+        preds: Dict[str, torch.Tensor],
+        frame_id: str,
+    ):
+        __, group_key, iframe = frame_id.split('|')
         # 对角线图
-        for key, label_value in labels.items():
+        for key, label_value in label.items():
             pred_value = preds[key]
             fig, ax = plt.subplots()
             ax: Axes
@@ -96,30 +99,9 @@ class Tester(Controller):
             ax.set_title(key)
             ax.tick_params(axis='x', which='major', top=True, bottom=True, labeltop=False, labelbottom=True)
             ax.tick_params(axis='y', which='major', right=True, left=True, labelright=False, labelleft=True)
-            img = os.path.join(self.output_dir, f'test_{key}_{iframe}.png')
+            img = os.path.join(self.output_dir, f'test_{key}_{group_key}_{iframe}.png')
             fig.savefig(img)
             plt.close()
         return None
-    
-    def save(self, inputs, labels, preds, iframe):
-        result = {
-            **{
-                key: value.detach().cpu()
-                for key, value in inputs.items()
-            },
-            **{
-                f'label_{key}': value.detach().cpu()
-                for key, value in labels.items()
-            },
-            **{
-                f'pred_{key}': value.detach().cpu()
-                for key, value in preds.items()
-            }
-        }
-        if self.args.format == 'pt':
-            torch.save(result, os.path.join(self.output_dir, f'test_result_{iframe}.pt'))
-        elif self.args.format == 'npy':
-            for key, value in result.items():
-                np.save(os.path.join(self.output_dir, f'test_result_{key}_{iframe}.npy'), value.numpy())
-        return None
+
 
