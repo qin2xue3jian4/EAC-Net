@@ -7,9 +7,8 @@ import argparse
 import numpy as np
 from tqdm import tqdm
 from datetime import datetime
-from typing import List, Dict, Union
+from typing import List, Dict
 from dataclasses import dataclass
-from collections import defaultdict
 from omegaconf import DictConfig, OmegaConf
 from hydra.core.hydra_config import HydraConfig
 
@@ -19,7 +18,7 @@ from torch.nn.parallel import DistributedDataParallel as DDP
 from ..utils.envs import setup_seed
 from ..data import get_loader, keys, LoaderWrapper
 from ..utils.version import SoftwareInfo
-from ..model import get_model, BaseModel
+from ..model import get_model
 
 def graph_to_labels(
     graph: Dict[str, Dict[str, torch.Tensor]],
@@ -90,7 +89,7 @@ class Controller(Runner):
         setup_seed(self.cfg.seed)
         self._print_base_infos()
         self._log(f'Output dir: {self.output_dir}')
-        datetime_suffix = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
+        datetime_suffix = datetime.now().strftime('%Y%m%d_%H%M%S')
         OmegaConf.save(self.cfg, os.path.join(self.output_dir, f'input-{datetime_suffix}.yaml'))
         self._load_model()
         self._get_out_type()
