@@ -7,10 +7,9 @@ from collections import (
 )
 import torch.nn.utils as nn_utils
 
-from ..tools import EMA, get_optimizer, Schedulers
+from ..tools import EMA, get_optimizer, Schedulers, MixedLoser
 from .record import Recorder
 from ..data.load import LoaderWrapper
-from ..losses.loss import MixedLoser
 from .run import Controller, graph_to_labels
 
 class Trainer(Controller):
@@ -139,8 +138,8 @@ class Trainer(Controller):
                 if flow_type == 'train':
                     self.optimizer.zero_grad(set_to_none=True)
                     loss.backward()
-                    if self.cfg['grad_max_norm'] is not None:
-                        nn_utils.clip_grad_norm_(self.model.parameters(), self.cfg['grad_max_norm'])
+                    if self.cfg.run.grad_max_norm is not None:
+                        nn_utils.clip_grad_norm_(self.model.parameters(), self.cfg.run.grad_max_norm)
                     self.optimizer.step()
                     self.ema.update(self.module)
                     self.train_step += 1

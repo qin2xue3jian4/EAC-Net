@@ -8,8 +8,8 @@ from collections import defaultdict
 from matplotlib.axes._axes import Axes
 
 from ..data import keys
-from ..losses.loss import MixedLoser
-from .run import Controller, graph_to_labels
+from ..tools import MixedLoser
+from .run import Controller
 from ..data.write import Writer
 
 def save_3d_picture(
