@@ -25,6 +25,7 @@ An open-source code for predicting atomic contributions charge density using Equ
     - [Training the Model](#training-the-model)
     - [Testing the Model](#testing-the-model)
     - [Making Predictions](#making-predictions)
+  - [EAC-mp](#eac-mp)
   - [Citation](#citation)
   - [License](#license)
 
@@ -171,6 +172,11 @@ The prediction function supports:
 
 - Configuring parallel prediction grid point quantity via the `--probe-size` parameter
 
+## EAC-mp
+We extended EAC-Net and trained a large pretrained model, EAC-mp, using CHGCAR files from the Materials Project.
+
+- Dataset (processed / sampled): [EAC-Net Charge Density Dataset — Zenodo](https://zenodo.org/records/16990467)
+- Pretrained weights: [EAC-mp-l5-3M.pt](https://store.aissquare.com/models/0a4060e2-f409-40ba-80c1-5a0af37f9230/eac-mp-l5-6000.pt)
 
 ## Citation
 The preprint describing the `EAC-Net` software framework:

@@ -25,6 +25,7 @@
     - [训练模型](#训练模型)
     - [测试模型](#测试模型)
     - [进行预测](#进行预测)
+  - [EAC-mp](#eac-mp)
   - [引用](#引用)
   - [许可证](#许可证)
 
@@ -175,6 +176,12 @@ eac predict --model outputs/train/models/model.pt --paths examples/water/POSCAR 
 - 通过参数`--ngfs`设置预测的网格大小，如果输入的是`h5`, `CHGCAR` 等包含网格信息的结构文件，在不设置`--ngfs`参数的情况下，程序会自动从结构文件中获取网格大小
 
 - 通过参数`--probe-size`设置并行预测的格点数量
+
+## EAC-mp
+我们在 `EAC-Net` 的基础上使用 `Materials Project` 的 `CHGCAR` 文件训练了一个大型预训练模型 `EAC-mp`。
+
+- 数据集（已处理 / 采样）： [EAC-Net Charge Density Dataset — Zenodo](https://zenodo.org/records/16990467)
+- 预训练权重： [EAC-mp-l5-3M.pt](https://store.aissquare.com/models/0a4060e2-f409-40ba-80c1-5a0af37f9230/eac-mp-l5-6000.pt)
 
 ## 引用
 `EAC-Net`模型的预印版本在 arXiv 上已发布，请使用以下引用:
