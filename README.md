@@ -124,7 +124,7 @@ For more parameters and methods for screening samples, please read the `scripts/
 
 ## Usage Examples
 
-The following examples demonstrate how to use `EAC-Net` for charge density modeling of water molecular systems.
+The following examples demonstrate how to use `EAC-Net` for charge density modeling of water molecular systems. You can find the example scripts in our notebook: [EAC-NET Water Example](https://colab.research.google.com/drive/1LHpOWC5HNuV9S8Knju6scarBzGpb54iQ?usp=sharing)
 
 ### Training the Model
 ```bash

@@ -123,7 +123,7 @@ python scripts/convert_dir.py <源目录> <目标目录>
 
 ## 示例
 
-以下示例展示了如何使用 `EAC-Net` 对水分子体系进行电荷密度建模
+以下示例展示了如何使用 `EAC-Net` 对水分子体系进行电荷密度建模。详细运行脚本可参见我们分享的笔记：[EAC-NET Water Example](https://colab.research.google.com/drive/1LHpOWC5HNuV9S8Knju6scarBzGpb54iQ?usp=sharing)
 
 ### 训练模型
 
