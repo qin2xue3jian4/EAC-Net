@@ -177,6 +177,7 @@ We extended EAC-Net and trained a large pretrained model, EAC-mp, using CHGCAR f
 
 - Dataset (processed / sampled): [EAC-Net Charge Density Dataset — Zenodo](https://zenodo.org/records/16990467)
 - Pretrained weights: [EAC-mp-l5-3M.pt](https://store.aissquare.com/models/0a4060e2-f409-40ba-80c1-5a0af37f9230/eac-mp-l5-6000.pt)
+- Training script: [input.yaml](examples/unicharge-mp/input.yaml)
 
 ## Citation
 The preprint describing the `EAC-Net` software framework:

@@ -1,0 +1,61 @@
+nepoch: 10000
+seed: 202508
+record:
+  loss_xscale: log
+  save_freq: 200
+data:
+  atom_rcut: 4.0
+  atom_sel: 100
+  probe_rcut: 6.0
+  probe_sel: 300
+  root_dir: /home/zk/qxj/unicharge/datasets
+  train:
+    epoch_size: 100
+    frame_size: 15
+    num_workers: 10
+    paths:
+    - 'mp_0*.h5'
+    probe_size: 25
+  valid:
+    epoch_size: 10
+    frame_size: 10
+    num_workers: 5
+    paths:
+    - 'mp_10*.h5'
+    probe_size: 20
+run:
+  schedulers:
+  - type: exp
+    nepoch: 10000
+    end_lr: 3.0e-5
+    freq: 10
+  optim_type: Lamb
+  # weight_decay: 0.003
+  start_lr: 5.0e-3
+  ema_decay: 0.99
+  grad_max_norm: 1.0
+model:
+  probe:
+    probe_edge_weight:
+      method: exp+smooth
+  lmax: 5
+  feature_length: 36
+  num_atom_layers: 4
+  num_basis: 8
+  num_probe_layers: 2
+  atom_invariant_neurons:
+  - 128
+  - 128
+  charge_neurons:
+  - 128
+  - 128
+  edge_weight_neurons:
+  - 128
+  - 128
+  probe_invariant_neurons:
+  - 128
+  - 128
+  simple_neurons:
+  - 128
+  - 48
+  spin: false

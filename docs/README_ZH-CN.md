@@ -182,6 +182,7 @@ eac predict --model outputs/train/models/model.pt --paths examples/water/POSCAR 
 
 - 数据集（已处理 / 采样）： [EAC-Net Charge Density Dataset — Zenodo](https://zenodo.org/records/16990467)
 - 预训练权重： [EAC-mp-l5-3M.pt](https://store.aissquare.com/models/0a4060e2-f409-40ba-80c1-5a0af37f9230/eac-mp-l5-6000.pt)
+- 训练脚本: [input.yaml](examples/unicharge-mp/input.yaml)
 
 ## 引用
 `EAC-Net`模型的预印版本在 arXiv 上已发布，请使用以下引用:
