@@ -2,7 +2,7 @@ import os
 import sys
 import argparse
 from functools import wraps
-from omegaconf  import OmegaConf
+from omegaconf  import OmegaConf, open_dict
 from hydra import main as hydra_main
 
 def create_parser():
@@ -243,7 +243,7 @@ def pre_parse_args():
     for unknown_arg in unknown_args:
         if unknown_arg.startswith('hydra.run.dir'):
             has_set_outdir = True
-        if unknown_arg.startswith('hydra'):
+        if unknown_arg.startswith('hydra') or unknown_arg.startswith('model='):
             sys.argv.append(unknown_arg)
         else:
             cli_args.append(unknown_arg)
@@ -268,11 +268,13 @@ def argment_parse() -> callable:
             # config: default -> input script -> command argments
             if mode == 'train' and args.config is not None:
                 user_cfg = OmegaConf.load(args.config)
-                cfg = OmegaConf.merge(cfg, user_cfg)
+                with open_dict(cfg):
+                    cfg = OmegaConf.merge(cfg, user_cfg)
             
             if len(cli_args) > 0:
                 cli_conf = OmegaConf.from_cli(cli_args)
-                cfg = OmegaConf.merge(cfg, cli_conf)
+                with open_dict(cfg):
+                    cfg = OmegaConf.merge(cfg, cli_conf)
             
             sys.argv = original_argv
             

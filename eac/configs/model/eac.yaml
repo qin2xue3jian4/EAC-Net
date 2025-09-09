@@ -1,0 +1,94 @@
+type: eac
+spin: false
+lmax: 3
+feature_length: 12
+num_atom_layers: 3
+num_probe_layers: 2
+num_basis: 8
+atom_invariant_neurons:
+- 64
+probe_invariant_neurons:
+- 64
+simple_neurons:
+- 240
+- 10
+edge_weight_neurons:
+- 240
+charge_neurons:
+- 240
+atom:
+  atom_encoding:
+    onehot:
+      length: 0
+      max_element: 110
+    physics:
+      electronic_layout: 7
+      atomic_number: false
+    feature_length: ${model.feature_length}
+  edge_encoding:
+    spherical:
+      lmax: ${model.lmax}
+      normalize: true
+      normalization: component
+    basis:
+      num_basis: ${model.num_basis}
+      rcut: ${data.atom_rcut}
+      epsilon: 1e-10
+    smooth:
+      p: 6
+      rcut: ${data.atom_rcut}
+      epsilon: ${model.atom.edge_encoding.basis.epsilon}
+  message_passing:
+    invariant_neurons: ${model.atom_invariant_neurons}
+    invariant_active: silu
+    num_layers: ${model.num_atom_layers}
+    lmax: ${model.lmax}
+    feature_length: ${model.feature_length}
+    feature_smooth: false
+    resnet: true
+    last_update: true
+probe:
+  spin: ${model.spin}
+  edge_encoding:
+    spherical:
+      lmax: ${model.lmax}
+      normalize: true
+      normalization: component
+    basis:
+      method: gaussian
+      num_basis: ${model.num_basis}
+      rcut: ${data.probe_rcut}
+      epsilon: 1e-10
+    smooth:
+      p: 3
+      rcut: ${data.probe_rcut}
+      epsilon: ${model.probe.edge_encoding.basis.epsilon}
+  message_passing:
+    invariant_neurons: ${model.probe_invariant_neurons}
+    invariant_active: silu
+    num_layers: ${model.num_probe_layers}
+    lmax: ${model.lmax}
+    feature_length: ${model.feature_length}
+    feature_smooth: false
+    resnet: true
+    last_update: false
+  feature_simple:
+    drop_probability: 0.0
+    neuron: ${model.simple_neurons}
+    cat_keys:
+    - length
+    - basis
+    - node_attrs
+  probe_edge_weight:
+    smooth: null
+    method: smooth
+    neurons: ${model.edge_weight_neurons}
+    active: silu
+    probe_cut: ${data.probe_rcut}
+    threshold: 1e-8
+  charge_head:
+    neuron: ${model.charge_neurons}
+    active: silu
+    bias: true
+    idt: true
+    resnet: true

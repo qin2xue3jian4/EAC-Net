@@ -1,3 +1,4 @@
+type: tracegrad
 atom:
   atom_encoding:
     onehot:

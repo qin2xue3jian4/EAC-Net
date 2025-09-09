@@ -125,7 +125,8 @@ class Trainer(Controller):
         lr = self.lr
         need_grad = (
             flow_type == 'train' or 
-            (hasattr(self.module, 'potential_pre_nets') and self.module.potential_pre_nets.grad)
+            (hasattr(self.module, 'potential_pre_nets') and self.module.potential_pre_nets.grad) or
+            self.cfg.model.type == 'tracegrad'
         )
 
         with torch.set_grad_enabled(need_grad):
