@@ -1,9 +1,12 @@
 import os
 import sys
 import argparse
+from argparse import Namespace
 from functools import wraps
-from omegaconf  import OmegaConf
+from omegaconf import OmegaConf
 from hydra import main as hydra_main
+from typing import Callable, Any, cast
+from omegaconf.dictconfig import DictConfig
 
 def create_parser():
     """
@@ -253,26 +256,26 @@ def pre_parse_args():
     
     return args, cli_args
 
-def argment_parse() -> callable:
+def argment_parse() -> Callable[[Callable[[Namespace, DictConfig], None]], Callable[[], None]]:
     original_argv = sys.argv.copy()
     args, cli_args = pre_parse_args()
     
     config_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'configs'))
     mode = args.mode
     
-    def decorator(func):
+    def decorator(func: Callable[[Namespace, DictConfig], None]) -> Callable[[], None]:
         @hydra_main(config_path=config_path, config_name=mode, version_base=None)
         @wraps(func)
-        def wrapped(cfg):
+        def wrapped(cfg: DictConfig) -> None:
             
             # config: default -> input script -> command argments
             if mode == 'train' and args.config is not None:
                 user_cfg = OmegaConf.load(args.config)
-                cfg = OmegaConf.merge(cfg, user_cfg)
+                cfg = cast(DictConfig, OmegaConf.merge(cfg, user_cfg))
             
             if len(cli_args) > 0:
                 cli_conf = OmegaConf.from_cli(cli_args)
-                cfg = OmegaConf.merge(cfg, cli_conf)
+                cfg = cast(DictConfig, OmegaConf.merge(cfg, cli_conf))
             
             sys.argv = original_argv
             

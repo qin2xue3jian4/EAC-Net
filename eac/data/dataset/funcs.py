@@ -82,12 +82,12 @@ def radius_3d(
     return index_3d
 
 def atom_coord_to_index(
-    atom_coord: Union[Tensor, np.ndarray],
-    atom_numbers: Union[Tensor, np.ndarray],
-    periodic_vectors: Union[Tensor, np.ndarray],
+    atom_coord: Tensor,
+    atom_numbers: Tensor,
+    periodic_vectors: Tensor,
     rcut: float,
     sels: Union[int, List[int], None] = None,
-    atom_types: Union[Tensor, List] = None,
+    atom_types: Union[Tensor, List, None] = None,
 ):
     """Search for the adjacency table between atoms
     Args:

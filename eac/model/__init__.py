@@ -1,6 +1,6 @@
 import pkgutil
 import importlib
-from typing import Union, Dict
+from typing import Union, Dict, cast
 from omegaconf import (
     OmegaConf,
     DictConfig,
@@ -17,6 +17,7 @@ def get_model(cfg: Union[DictConfig, Dict]) -> BaseModel:
         model_config = OmegaConf.to_container(cfg.model, resolve=True)
     else:
         model_config = cfg['model']
+    model_config = cast(dict, model_config)
     model_type = model_config.pop('type', DEFAULT_MODEL)
     assert model_type in ModelFactory._registry, f'model type {model_type} not found'
     model = ModelFactory.create(model_type, **model_config)
