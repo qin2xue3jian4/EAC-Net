@@ -2,7 +2,7 @@ import torch
 import numpy as np
 from torch import Tensor
 from torch_cluster import radius
-from typing import Dict, List, Union
+from typing import Dict, List, Union, Optional
 from torch_geometric.data import HeteroData
 
 from .. import keys
@@ -87,7 +87,7 @@ def atom_coord_to_index(
     periodic_vectors: Tensor,
     rcut: float,
     sels: Union[int, List[int], None] = None,
-    atom_types: Union[Tensor, List, None] = None,
+    atom_types: Optional[Tensor] = None,
 ):
     """Search for the adjacency table between atoms
     Args:
@@ -109,6 +109,7 @@ def atom_coord_to_index(
         assert len(sels) == len(atom_types)
     
     c_indexs, n_indexs, p_indexs = [], [], []
+
     for c_type in atom_types:
         c_mask = atom_numbers == c_type
         c_coord = atom_coord[c_mask]
@@ -121,7 +122,7 @@ def atom_coord_to_index(
                 periodic_vectors,
                 rcut,
                 sel,
-                c_type == n_type,
+                c_type == n_type, # type: ignore
             )
             rn_index = torch.where(n_mask)[0][n_index]
             rc_index = torch.where(c_mask)[0][c_index]
@@ -138,7 +139,7 @@ def atom_coord_to_index(
 def add_edge_index(
     heterodata: HeteroData,
     index_3d: torch.Tensor,
-    edge_key: str,
+    edge_key: Union[str, tuple],
 ):
     heterodata[edge_key][keys.INDEX] = index_3d[[1,0]]
     setattr(heterodata[edge_key], keys.PERIODIC_INDEX, index_3d[2])

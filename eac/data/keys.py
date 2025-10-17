@@ -65,7 +65,7 @@ CHARGE_DOWN = 'chgdown'
 
 @dataclass
 class Label:
-    parent: Union[str, List[str]]
+    parent: str
     key: str
     simple: str
     progress: str
