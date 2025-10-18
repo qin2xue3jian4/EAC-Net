@@ -211,19 +211,23 @@ def create_parser():
         '--format', 
         type=str, 
         default='chgcar', 
-        choices=['chgcar', 'h5', 'npy'],
+        choices=['chgcar', 'h5', 'npy', 'none'],
         help='Format of output charge density files'
     )
     predict_parser.add_argument(
         '-a', '--contribute', 
+        action='store_true', 
+        help='Whether to calculate contributions from each atom'
+    )
+    predict_parser.add_argument(
+        '--savecontribute', 
         action='store_true', 
         help='Whether to output contributions from each atom'
     )
     predict_parser.add_argument(
         '--loglevel', 
         type=str, 
-        default='group', 
-        choices=['group', 'file', 'frame'],
+        default='group',
         help='Log detail level'
     )
     predict_parser.add_argument(

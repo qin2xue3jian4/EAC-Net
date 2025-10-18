@@ -53,13 +53,18 @@ class Predictor(Controller):
                         else:
                             value_type = keys.CHARGE
                         atom_preds[value_type] = [node_spin_value]
-                    file = os.path.join(self.output_dir, f'{base_filename}_atom_{inode}.chgcar')
-                    writer.write_to_chgcar(file, atom_preds, iframe, ngfs)
+                    if self.args.savecontribute:
+                        file = os.path.join(self.output_dir, f'{base_filename}_atom_{inode}.chgcar')
+                        writer.write_to_chgcar(file, atom_preds, iframe, ngfs)
+                    else:
+                        node_msg = ', '.join([f'{key}: {value[0].sum():.4e}' for key, value in atom_preds.items()])
+                        self._log(f'Frame {frame_id} Atom {inode} Contributions: {node_msg}')
             ngroup = self.loader.dataset.ngroups[ifile]
             if group_idx >= ngroup:
-                base_filename = self.generate_filename(frame_id, istructure)
-                file = os.path.join(self.output_dir, f'{base_filename}.{self.args.format}')
-                writer.write_to_file(file)
+                if self.args.format != 'none':
+                    base_filename = self.generate_filename(frame_id, istructure)
+                    file = os.path.join(self.output_dir, f'{base_filename}.{self.args.format}')
+                    writer.write_to_file(file)
                 ifile += 1
                 group_idx = 0
         return
