@@ -56,10 +56,11 @@ class Predictor(Controller):
                     if self.args.savecontribute:
                         file = os.path.join(self.output_dir, f'{base_filename}_atom_{inode}.chgcar')
                         writer.write_to_chgcar(file, atom_preds, iframe, ngfs)
-                    else:
-                        node_msg = ', '.join([f'{key}: {value[0].sum():.4e}' for key, value in atom_preds.items()])
-                        atom_id = space_group.group[keys.ATOM_TYPE][0][inode]
-                        self._log(f'Frame {frame_id} {inode} Atom {atom_id} Contributions: {node_msg}')
+                    volume = np.abs(np.linalg.det(space_group.group[keys.CELL][0]))
+                    ratio = volume / np.prod(ngfs)
+                    node_msg = ', '.join([f'{key}: {value[0].sum() * ratio:.4e}' for key, value in atom_preds.items()])
+                    atom_id = space_group.group[keys.ATOM_TYPE][0][inode]
+                    self._log(f'Frame {frame_id} {inode} Atom {atom_id} Contributions: {node_msg}')
             ngroup = self.loader.dataset.ngroups[ifile]
             if group_idx >= ngroup:
                 if self.args.format != 'none':
