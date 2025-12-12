@@ -13,6 +13,7 @@ def parse_argments():
     parser.add_argument('source_dir', type=str, help='Source directory.')
     parser.add_argument('target_dir', type=str, help='Target directory.')
     parser.add_argument('--whole', action='store_true', help='Whether to store whole data in one file.')
+    parser.add_argument('--wholefilename', type=str, default='whole', help='The whole filename.')
     parser.add_argument('--random', type=int, default=0, help='Number of random samples.')
     parser.add_argument('--grad', type=int, default=0, help='Number of grad samples.')
     parser.add_argument('--abs', type=int, default=0, help='Number of abs samples.')
@@ -98,8 +99,8 @@ def main():
         if os.path.isfile(args.target_dir):
             target_whole = args.target_dir
         else:
-            target_whole = os.path.join(args.target_dir, 'whole.h5')
-        write_h5file(groups, target_whole)
+            target_whole = os.path.join(args.target_dir, args.wholefilename+'.h5')
+        write_h5file(whole_groups, target_whole)
     return None
 
 if __name__ == '__main__':
