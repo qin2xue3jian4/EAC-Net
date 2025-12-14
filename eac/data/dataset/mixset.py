@@ -139,6 +139,8 @@ class MixDataset(Dataset):
                 num += group.group[label.key].size
                 value_sum += group.group[label.key].sum()
                 value_2sum += np.square(group.group[label.key]).sum()
+            if num == 0:
+                continue
             infos[f'{label.key}_mean'] = float(value_sum / num)
             infos[f'{label.key}_std'] = float(math.sqrt(value_2sum / num - math.pow(value_sum / num, 2)))
         return infos
