@@ -23,7 +23,7 @@ class BaseModel(torch.nn.Module):
         for name, params in self.named_parameters():
             if name in state_dict and params.shape == state_dict[name].shape:
                 params.data.copy_(state_dict[name])
-                if finetune:
+                if finetune and name.startswith('atom_env_model'):
                     params.requires_grad = False
             else:
                 if name not in state_dict:
