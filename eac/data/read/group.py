@@ -55,6 +55,7 @@ class SpaceGroup(BaseGroup):
         iprobes: slice=None,
         probe_in_ngfs: np.ndarray=None,
         return_label: bool=True,
+        return_diff: bool=False
     ):
         out_dict = super().get_iframe(iframe, return_label)
         if probe_in_ngfs is None and self.sample_probes:
@@ -65,6 +66,7 @@ class SpaceGroup(BaseGroup):
         out_dict[keys.PROBE_GRID_NGFS] = self.data_ngfs if probe_in_ngfs is None else probe_in_ngfs
         if return_label:
             for key in PROBE_LABELS:
+                if key == keys.CHARGE_DIFF and not return_diff: continue
                 if key in self.group:
                     out_dict[key] = self.group[key][iframe, iprobes]
         return out_dict

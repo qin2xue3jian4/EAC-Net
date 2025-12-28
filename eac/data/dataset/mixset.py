@@ -43,10 +43,13 @@ class MixDataset(Dataset):
         self.group_keys: List[str] = []
         self.groups: List[Union[SpaceGroup, BaseGroup]] = []
         self.nframes: List[int] = []
+        self.has_diff = True
         for file_path, reader in self.readers.items():
             for group_key, group in zip(reader.group_keys, reader.groups):
                 if self.exclude_keys is not None and group_key in self.exclude_keys:
                     continue
+                if keys.CHARGE_DIFF not in group.group:
+                    self.has_diff = False
                 final = f'{file_path}|{group_key}'
                 self.group_keys.append(final)
                 self.groups.append(group)
@@ -98,7 +101,8 @@ class MixDataset(Dataset):
                 iframe,
                 iprobes,
                 probe_in_ngfs = ngfs,
-                return_label = self.mode != 'predict'
+                return_label = self.mode != 'predict',
+                return_diff = self.has_diff
             )
         else:
             out_dict = group.get_iframe(
@@ -113,7 +117,8 @@ class MixDataset(Dataset):
             probe_sel=self.probe_sel,
             dtype=self.dtype,
         )
-        herodata[keys.GLOBAL][keys.INFOS] = self.groups[igroup].extro_infos
+        if self.mode != 'train':
+            herodata[keys.GLOBAL][keys.INFOS] = self.groups[igroup].extro_infos
         herodata[keys.GLOBAL][keys.FRAME_ID] = f'{self.group_keys[igroup]}|{iframe}'
         return herodata
     
