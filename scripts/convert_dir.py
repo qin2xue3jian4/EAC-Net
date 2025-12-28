@@ -4,6 +4,8 @@ import h5py
 import argparse
 import numpy as np
 from typing import Dict
+import concurrent.futures
+from multiprocessing import cpu_count
 
 from scripts.full_to_sample import convert_full_to_sample
 from eac.data.read import file_paths_to_reader_modes, BaseReader, ReaderFactory, SpaceGroup
@@ -13,6 +15,7 @@ def parse_argments():
     parser.add_argument('source_dir', type=str, help='Source directory.')
     parser.add_argument('target_dir', type=str, help='Target directory.')
     parser.add_argument('--whole', action='store_true', help='Whether to store whole data in one file.')
+    parser.add_argument('--wholefilename', type=str, default='whole', help='The whole filename.')
     parser.add_argument('--random', type=int, default=0, help='Number of random samples.')
     parser.add_argument('--grad', type=int, default=0, help='Number of grad samples.')
     parser.add_argument('--abs', type=int, default=0, help='Number of abs samples.')
@@ -21,6 +24,7 @@ def parse_argments():
     parser.add_argument('--depth', type=int, default=6, help='The depth of source data.')
     parser.add_argument('--random-max-cut', type=float, default=6.0, help='The maximum distance to cut.')
     parser.add_argument('--near-max-cut', type=float, default=1.2, help='The maximum distance to cut.')
+    parser.add_argument('--processes', type=int, default=None, help='Number of processes to use.')
     args = parser.parse_args()
     assert args.source_dir is not None
     assert args.target_dir is not None
@@ -72,34 +76,75 @@ def full_to_sample(
         }
     return groups
 
+def process_single_file(args_tuple, args, target_dir, is_whole=False):
+    """Function to process a single file."""
+    ipath, (real_path, reader_mode) = args_tuple
+    
+    reader = ReaderFactory._registry[reader_mode](real_path)
+    groups = full_to_sample(reader, args)
+    
+    if not is_whole:
+        if os.path.isfile(real_path):
+            base = '.'.join(os.path.basename(real_path).split('.')[:-1])
+        else:
+            base = os.path.basename(real_path)
+        h5_file = os.path.join(target_dir, f'{base}.h5')
+        write_h5file(groups, h5_file)
+        return None
+    else:
+        # If whole, return the groups
+        return {f'{ipath}-{key}': group for key, group in groups.items()}
+    
 def main():
     args = parse_argments()
     target_dir = os.path.dirname(args.target_dir) if os.path.isfile(args.target_dir) else args.target_dir
     real_paths = file_paths_to_reader_modes([args.source_dir], search_depth=args.depth)
     
     os.makedirs(target_dir, exist_ok=True)
-    whole_groups = {}
-    for ipath, (real_path, reader_mode) in enumerate(
-        tqdm.tqdm(real_paths.items())
-    ):
-        reader = ReaderFactory._registry[reader_mode](real_path)
-        groups = full_to_sample(reader, args)
-        if not args.whole:
-            if os.path.isfile(real_path):
-                base = '.'.join(os.path.basename(real_path).split('.')[:-1])
-            else:
-                base = os.path.basename(real_path)
-            h5_file = os.path.join(target_dir, f'{base}.h5')
-            write_h5file(groups, h5_file)
-        else:
-            for key, group in groups.items():
-                whole_groups[f'{ipath}-{key}'] = group
+    real_paths_items = list(real_paths.items())
+    
+    max_workers = args.processes if args.processes else cpu_count()
     if args.whole:
+        whole_groups = {}
+        
+        with concurrent.futures.ProcessPoolExecutor(max_workers=max_workers) as executor:
+            # Submit tasks
+            future_to_item = {
+                executor.submit(process_single_file, (i, item), args, target_dir, True): (i, item)
+                for i, item in enumerate(real_paths_items)
+            }
+            
+            for future in tqdm.tqdm(
+                concurrent.futures.as_completed(future_to_item),
+                total=len(real_paths_items),
+                desc="Processing files"
+            ):
+                result = future.result()
+                if result:
+                    whole_groups.update(result)
+        
+        # Write the whole groups to a single h5 file
         if os.path.isfile(args.target_dir):
             target_whole = args.target_dir
         else:
-            target_whole = os.path.join(args.target_dir, 'whole.h5')
-        write_h5file(groups, target_whole)
+            target_whole = os.path.join(args.target_dir, args.wholefilename+'.h5')
+        write_h5file(whole_groups, target_whole)
+        
+    else:
+        with concurrent.futures.ProcessPoolExecutor(max_workers=max_workers) as executor:
+            # Submit tasks
+            futures = [
+                executor.submit(process_single_file, (i, item), args, target_dir, False)
+                for i, item in enumerate(real_paths_items)
+            ]
+            
+            # Wait for all tasks to complete
+            for _ in tqdm.tqdm(
+                concurrent.futures.as_completed(futures),
+                total=len(futures),
+                desc="Processing files"
+            ):
+                pass
     return None
 
 if __name__ == '__main__':
