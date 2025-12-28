@@ -101,6 +101,7 @@ class Trainer(Controller):
     @Recorder.note_run
     def run(self):
         self.nepoch = self.cfg.nepoch
+        unfix_finetune = self.cfg.run.unfix_finetune
         for epoch in range(self.start_epoch, self.nepoch+1):
             self.model.train()
             self.evaluate(epoch=epoch, flow_type='train')
@@ -112,6 +113,8 @@ class Trainer(Controller):
             self.ema.restore(self.module)
             if self.break_train:
                 break
+            if self.module.finetuning and epoch == unfix_finetune:
+                self.module.unfix_finetune()
         return
     
     @property

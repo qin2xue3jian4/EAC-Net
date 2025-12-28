@@ -11,6 +11,7 @@ class BaseModel(torch.nn.Module):
     def __init__(self):
         super().__init__()
         self.infos: OrderedDict[str, float] = OrderedDict()
+        self.finetuning = False
 
     def state_dict(self, *args, **kwargs):
         state_dict = super().state_dict(*args, **kwargs)
@@ -19,6 +20,7 @@ class BaseModel(torch.nn.Module):
         return state_dict
     
     def safely_load_state_dict(self, state_dict: Dict, finetune: bool = False):
+        self.finetuning = finetune
         msgs = []
         for name, params in self.named_parameters():
             if name in state_dict and params.shape == state_dict[name].shape:
@@ -34,3 +36,9 @@ class BaseModel(torch.nn.Module):
             if re.match(r'infos\..+', key):
                 self.infos[key[6:]] = value
         return msgs
+
+    def unfix_finetune(self):
+        for name, params in self.named_parameters():
+            if name.startswith('atom_env_model'):
+                params.requires_grad = True
+        self.finetuning = False

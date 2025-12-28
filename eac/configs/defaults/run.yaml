@@ -1,4 +1,5 @@
 run:
+  unfix_finetune: -1
   optim_type: adam
   start_lr: 3.0e-3
   weight_decay: 0.0
