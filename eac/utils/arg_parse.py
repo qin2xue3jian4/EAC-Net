@@ -221,8 +221,10 @@ def create_parser():
     )
     predict_parser.add_argument(
         '--savecontribute', 
-        action='store_true', 
-        help='Whether to output contributions from each atom'
+        type=int,
+        nargs='+',
+        default=[],
+        help='The indices of atoms to output contributions.'
     )
     predict_parser.add_argument(
         '--loglevel', 

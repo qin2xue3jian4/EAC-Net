@@ -53,7 +53,7 @@ class Predictor(Controller):
                         else:
                             value_type = keys.CHARGE
                         atom_preds[value_type] = [node_spin_value]
-                    if self.args.savecontribute:
+                    if inode in self.args.savecontribute or -1 in self.args.savecontribute:
                         file = os.path.join(self.output_dir, f'{base_filename}_atom_{inode}.chgcar')
                         writer.write_to_chgcar(file, atom_preds, iframe, ngfs)
                     volume = np.abs(np.linalg.det(space_group.group[keys.CELL][0]))
