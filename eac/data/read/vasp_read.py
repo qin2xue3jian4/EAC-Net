@@ -58,7 +58,7 @@ class VASPReader(BaseReader):
 @ReaderFactory.register('poscar')
 class POSCARReader(BaseReader):
     
-    patterns: ClassVar[List[str]] = ['POSCAR', '*.POSCAR', '*.poscar']
+    patterns: ClassVar[List[str]] = ['POSCAR', '*.POSCAR', '*.poscar', '*.vasp']
     pattern_parent: ClassVar[bool] = False
     only_structure: ClassVar[bool] = True
     
