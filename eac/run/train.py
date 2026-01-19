@@ -130,7 +130,6 @@ class Trainer(Controller):
             flow_type == 'train' or 
             (hasattr(self.module, 'potential_pre_nets') and self.module.potential_pre_nets.grad)
         )
-
         with torch.set_grad_enabled(need_grad):
             for data in self.loaders[flow_type]:
                 
@@ -142,7 +141,12 @@ class Trainer(Controller):
                     self.optimizer.zero_grad(set_to_none=True)
                     loss.backward()
                     if self.cfg.run.grad_max_norm is not None:
-                        nn_utils.clip_grad_norm_(self.model.parameters(), self.cfg.run.grad_max_norm)
+                        total_norm = nn_utils.clip_grad_norm_(self.model.parameters(), self.cfg.run.grad_max_norm)
+                    else:
+                        total_norm = torch.nn.utils.parameters_to_vector(
+                            [p.grad for p in self.model.parameters() if p.grad is not None]
+                        ).norm(2).item()
+                    losses['total_norms'].append(float(total_norm))
                     self.optimizer.step()
                     self.ema.update(self.module)
                     self.train_step += 1

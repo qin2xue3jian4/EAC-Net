@@ -182,6 +182,19 @@ class Recorder(Runner):
         ax.set_title(img_title)
         fig.savefig(os.path.join(self.img_path, 'lr.png'))
         plt.close()
+
+        if 'total_norms' in self.flow_losses['train'][0]:
+            total_norms = [flow_loss['total_norms'] for flow_loss in self.flow_losses['train']]
+            fig, ax = plt.subplots()
+            ax.plot(epoches, total_norms, label='Total Norm')
+            ax.set_xlabel('epoch')
+            ax.set_ylabel('Total Norm')
+            ax.tick_params(axis='x', which='both', top=True, bottom=True, labeltop=False, labelbottom=True)
+            ax.tick_params(axis='y', which='both', right=True, left=True, labelright=False, labelleft=True)
+            ax.legend()
+            ax.set_title('Total Norm vs Epoch')
+            fig.savefig(os.path.join(self.img_path, 'norms.png'))
+            plt.close()
         return
     
     def save_final(self, trainer):
