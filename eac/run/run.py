@@ -133,8 +133,9 @@ class Controller(Runner):
                 restored_model = state_dict['settings']['model']
                 cfg_model = OmegaConf.to_container(self.cfg, resolve=True)['model']
                 if restored_model != cfg_model:
-                    self._log(f'model setting is different between input and restored model, using setting from input script.', 1, loglevel='warn')
+                    self._log(f'model setting is different between input and restored model, using setting from restored model.', 1, loglevel='warn')
             self.cfg = OmegaConf.merge(self.restored_cfg, self.cfg)
+            self.cfg.model = self.restored_cfg.model
             method = 'command'
         else:
             if self.args.model:
