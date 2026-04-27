@@ -8,7 +8,7 @@ English | [中文](docs/README_ZH-CN.md)
 
 ![Model Structure](docs/imgs/model.png)
 
-An open-source code for predicting atomic contributions charge density using Equivariant Message Passing Networks.
+An open-source code for predicting atomic contributions charge density using Equivariant Message Passing Networks, .
 
 ## Contents
 - [EAC-Net](#eac-net)
@@ -180,7 +180,7 @@ We extended EAC-Net and trained a large pretrained model, EAC-mp, using CHGCAR f
 - Training script: [input.yaml](examples/unicharge-mp/input.yaml)
 
 ## Citation
-The preprint describing the `EAC-Net` software framework:
+If you use this code in your academic work, please cite the [article](https://doi.org/10.1021/acs.jctc.6c00283):
 ```
 @article{eACNetPredictingRealSpace2026,
   title = {EAC-Net: Predicting Real-Space Charge Density via Equivariant Atomic Contributions},

@@ -185,7 +185,7 @@ eac predict --model outputs/train/models/model.pt --paths examples/water/POSCAR 
 - 训练脚本: [input.yaml](examples/unicharge-mp/input.yaml)
 
 ## 引用
-`EAC-Net`模型的预印版本在 arXiv 上已发布，请使用以下引用:
+如果您使用了`EAC-Net`模型，请引用该[文献](https://doi.org/10.1021/acs.jctc.6c00283):
 ```
 @article{eACNetPredictingRealSpace2026,
   title = {EAC-Net: Predicting Real-Space Charge Density via Equivariant Atomic Contributions},
