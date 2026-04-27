@@ -1,9 +1,11 @@
 import os
 import numpy as np
+from collections import defaultdict
 
 from .run import Controller
 from ..data import keys
 from ..data.write import Writer
+from ..utils.dipole import calculate_atomic_dipole, write_result_to_xyz
 
 class Predictor(Controller):
     def __post_init__(self):
@@ -43,6 +45,7 @@ class Predictor(Controller):
                 writer.append_result(frame_id, space_group, frame_results, sample_probe=False, ngfs=ngfs)
 
             if self.args.contribute:
+                atom_results = defaultdict(list)
                 atom_contributions = result['atom_contributions'].view(natom, np.prod(ngfs), self.spin)
                 for inode, node_value in enumerate(atom_contributions):
                     atom_preds = {}
@@ -56,11 +59,19 @@ class Predictor(Controller):
                     if inode in self.args.savecontribute or -1 in self.args.savecontribute:
                         file = os.path.join(self.output_dir, f'{base_filename}_atom_{inode}.chgcar')
                         writer.write_to_chgcar(file, atom_preds, iframe, ngfs)
+                    ionic_position = space_group.group[keys.ATOM_POS][iframe, inode]
+                    charge, dipole, second = calculate_atomic_dipole(node_value[:,0].cpu().numpy().reshape(ngfs), space_group.group[keys.CELL][0], ionic_position)
+                    atom_results['charge'].append(charge)
+                    atom_results['dipole'].append(dipole)
+                    atom_results['second'].append(second)
                     volume = np.abs(np.linalg.det(space_group.group[keys.CELL][0]))
                     ratio = volume / np.prod(ngfs)
                     node_msg = ', '.join([f'{key}: {value[0].sum() * ratio:.4e}' for key, value in atom_preds.items()])
                     atom_id = space_group.group[keys.ATOM_TYPE][0][inode]
                     self._log(f'Frame {frame_id} {inode} Atom {atom_id} Contributions: {node_msg}')
+                base_filename = self.generate_filename(frame_id, istructure)
+                xyz_file = os.path.join(self.output_dir, f'{base_filename}.xyz')
+                write_result_to_xyz(atom_results, space_group.group, xyz_file)
             ngroup = self.loader.dataset.ngroups[ifile]
             if group_idx >= ngroup:
                 if self.args.format != 'none':
