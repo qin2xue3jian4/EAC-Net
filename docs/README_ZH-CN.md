@@ -187,14 +187,13 @@ eac predict --model outputs/train/models/model.pt --paths examples/water/POSCAR 
 ## 引用
 `EAC-Net`模型的预印版本在 arXiv 上已发布，请使用以下引用:
 ```
-@misc{xuejian2025eacnetrealspacechargedensity,
-      title={EAC-Net: Real-space charge density via equivariant atomic contributions}, 
-      author={Qin Xuejian and Lv Taoyuze and Zhong Zhicheng},
-      year={2025},
-      eprint={2508.04052},
-      archivePrefix={arXiv},
-      primaryClass={cond-mat.mtrl-sci},
-      url={https://arxiv.org/abs/2508.04052}, 
+@article{eACNetPredictingRealSpace2026,
+  title = {EAC-Net: Predicting Real-Space Charge Density via Equivariant Atomic Contributions},
+  author = {Qin, Xuejian and Lv, Taoyuze and Zhong, Zhicheng},
+  year = 2026,
+  journal = {Journal of Chemical Theory and Computation},
+  doi = {10.1021/acs.jctc.6c00283},
+  langid = {english}
 }
 ```
 ## 许可证

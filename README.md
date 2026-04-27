@@ -182,14 +182,13 @@ We extended EAC-Net and trained a large pretrained model, EAC-mp, using CHGCAR f
 ## Citation
 The preprint describing the `EAC-Net` software framework:
 ```
-@misc{xuejian2025eacnetrealspacechargedensity,
-      title={EAC-Net: Real-space charge density via equivariant atomic contributions}, 
-      author={Qin Xuejian and Lv Taoyuze and Zhong Zhicheng},
-      year={2025},
-      eprint={2508.04052},
-      archivePrefix={arXiv},
-      primaryClass={cond-mat.mtrl-sci},
-      url={https://arxiv.org/abs/2508.04052}, 
+@article{eACNetPredictingRealSpace2026,
+  title = {EAC-Net: Predicting Real-Space Charge Density via Equivariant Atomic Contributions},
+  author = {Qin, Xuejian and Lv, Taoyuze and Zhong, Zhicheng},
+  year = 2026,
+  journal = {Journal of Chemical Theory and Computation},
+  doi = {10.1021/acs.jctc.6c00283},
+  langid = {english}
 }
 ```
 
